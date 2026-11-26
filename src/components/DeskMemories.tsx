@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 export interface MemoryPhoto {
-  id: 'sunset' | 'casque' | 'ride';
+  id: 'sunset' | 'casque' | 'ride' | 'together';
   src: string;
   caption: string;
   subcaption: string;
@@ -36,6 +36,14 @@ export const MEMORY_PHOTOS: MemoryPhoto[] = [
     subcaption: 'À deux, toujours',
     aspect: 'landscape',
     rotate90: true,
+  },
+  {
+    id: 'together',
+    src: encodeURI('/together.png'),
+    caption: 'Together',
+    subcaption: 'Pas à pas, un seul cœur',
+    aspect: 'portrait',
+    objectPosition: '50% 82%',
   },
 ];
 
@@ -112,7 +120,7 @@ export const PolaroidCard: React.FC<PolaroidCardProps> = ({
       {/* Translucent rose-ivory washi tape accent */}
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute -top-2 ${tapePos} h-3.5 w-8 sm:w-10 bg-[#E8A6B7]/55 backdrop-blur-[1px] border border-[#C98297]/25 shadow-[0_1px_2px_rgba(57,48,46,0.08)]`}
+        className={`pointer-events-none absolute -top-2 ${tapePos} h-3.5 w-8 sm:w-10 bg-[#E8A6B7]/65 border border-[#C98297]/25 shadow-[0_1px_2px_rgba(57,48,46,0.08)]`}
       />
 
       <div
@@ -185,11 +193,26 @@ export const DeskPolaroids: React.FC<DeskPolaroidsProps> = ({ visible, onSelectP
             />
           </motion.div>
 
+          {/* Lower-left keepsake: Red steps, matching sneakers & heart hands */}
+          <motion.div
+            initial={{ opacity: 0, x: -18, y: 20, rotate: 12 }}
+            animate={{ opacity: 1, x: 0, y: 0, rotate: 6 }}
+            transition={{ duration: 0.9, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="pointer-events-auto absolute bottom-20 left-3 sm:bottom-16 sm:left-10 md:left-20 lg:left-32 w-[78px] sm:w-[116px] md:w-[136px]"
+          >
+            <PolaroidCard
+              photo={MEMORY_PHOTOS[3]}
+              onClick={() => onSelectPhoto(3)}
+              compact
+              tapeSide="left"
+            />
+          </motion.div>
+
           {/* Lower-right keepsake: Smiling together on the ride */}
           <motion.div
             initial={{ opacity: 0, x: 18, y: 20, rotate: -10 }}
             animate={{ opacity: 1, x: 0, y: 0, rotate: -4 }}
-            transition={{ duration: 0.9, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.9, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
             className="pointer-events-auto absolute bottom-20 right-3 sm:bottom-16 sm:right-10 md:right-20 lg:right-32 w-[92px] sm:w-[134px] md:w-[152px]"
           >
             <PolaroidCard
@@ -225,22 +248,29 @@ export const LetterMemoriesFan: React.FC<LetterMemoriesFanProps> = ({ visible, o
         Quelques instants gardés tout près du cœur...
       </p>
 
-      <div className="flex items-end justify-center gap-2.5 sm:gap-5 px-2">
-        <div className="w-[92px] sm:w-[132px] -rotate-6 translate-y-1">
+      <div className="grid grid-cols-2 gap-3.5 max-w-[260px] sm:max-w-none sm:flex sm:items-end sm:justify-center sm:gap-4 px-2">
+        <div className="w-full sm:w-[118px] -rotate-4 sm:-rotate-6 translate-y-1">
           <PolaroidCard
             photo={MEMORY_PHOTOS[0]}
             onClick={() => onSelectPhoto(0)}
             tapeSide="center"
           />
         </div>
-        <div className="w-[106px] sm:w-[148px] rotate-1 -translate-y-1 z-10">
+        <div className="w-full sm:w-[134px] rotate-2 sm:rotate-1 -translate-y-1 z-10">
           <PolaroidCard
             photo={MEMORY_PHOTOS[2]}
             onClick={() => onSelectPhoto(2)}
             tapeSide="left"
           />
         </div>
-        <div className="w-[92px] sm:w-[132px] rotate-6 translate-y-1">
+        <div className="w-full sm:w-[118px] rotate-2 sm:-rotate-2 translate-y-1">
+          <PolaroidCard
+            photo={MEMORY_PHOTOS[3]}
+            onClick={() => onSelectPhoto(3)}
+            tapeSide="center"
+          />
+        </div>
+        <div className="w-full sm:w-[118px] -rotate-3 sm:rotate-6 translate-y-0.5">
           <PolaroidCard
             photo={MEMORY_PHOTOS[1]}
             onClick={() => onSelectPhoto(1)}

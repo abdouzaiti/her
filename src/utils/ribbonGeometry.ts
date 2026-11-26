@@ -64,7 +64,7 @@ function cubicBezier(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: number): Vec2 {
 
 export function sampleBezierSpine(
   segments: Array<{ p0: Vec2; p1: Vec2; p2: Vec2; p3: Vec2; wStart: number; wEnd: number }>,
-  samplesPerSegment = 40
+  samplesPerSegment = 20
 ): SpinePoint[] {
   const pts: SpinePoint[] = [];
   segments.forEach((seg, segIdx) => {
@@ -81,6 +81,18 @@ export function sampleBezierSpine(
   });
   return pts;
 }
+
+const EMPTY_RIBBON_MESH: RibbonMesh = {
+  bodyPath: '',
+  sheenPath: '',
+  secondarySheenPath: '',
+  coreShadowPath: '',
+  edgeTopPath: '',
+  edgeBottomPath: '',
+  pleatHighlightPaths: [],
+  pleatShadowPaths: [],
+  tip: { x: 0, y: 0 },
+};
 
 export function buildRibbonMesh(
   spine: SpinePoint[],
@@ -187,7 +199,7 @@ export function buildRibbonMesh(
   endDx /= endLen;
   endDy /= endLen;
 
-  const fmt = (p: Vec2) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+  const fmt = (p: Vec2) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
   const closeBand = (a: Vec2[], b: Vec2[]) => {
     let d = `M ${fmt(a[0])}`;
     for (let i = 1; i < a.length; i++) d += ` L ${fmt(a[i])}`;
@@ -385,7 +397,7 @@ export function computeBowGeometry(
         wEnd: 12.6,
       },
     ],
-    34
+    18
   );
 
   // Bottom arm: peels from y=303 up & curls to (baseCx + 28, baseCy + 48)
@@ -404,7 +416,7 @@ export function computeBowGeometry(
         wEnd: 12.6,
       },
     ],
-    34
+    18
   );
 
   // Left arm: peels from x=-3 rightward & curls to (baseCx - 86, baseCy - 20)
@@ -423,7 +435,7 @@ export function computeBowGeometry(
         wEnd: 12.6,
       },
     ],
-    40
+    22
   );
 
   // Right arm: peels from x=443 leftward & curls to (baseCx + 52, baseCy + 24)
@@ -442,101 +454,124 @@ export function computeBowGeometry(
         wEnd: 12.6,
       },
     ],
-    32
+    16
   );
 
   const leftCollapse = activeSide === 'left' ? activeLoopCollapse : oppositeLoopCollapse;
   const rightCollapse = activeSide === 'right' ? activeLoopCollapse : oppositeLoopCollapse;
 
+  const leftLoopOpacity = 1 - smoothstep(0.66, 0.92, leftCollapse);
+  const rightLoopOpacity = 1 - smoothstep(0.66, 0.92, rightCollapse);
+  const pleatsOpacity = 1 - smoothstep(0.35, 0.82, progress);
+  const tailsOpacity = 1 - smoothstep(0.84, 1.0, progress);
+  const looseStripOpacity = smoothstep(0.76, 0.98, progress);
+  const knotOpacity = 1 - smoothstep(0.68, 0.94, progress);
+
   // LEFT LOOP — Crisp tailored couture angular fold (zawaya hadda)
-  const lSpan = lerp(88, 12, leftCollapse);
-  const lCornerH = lerp(24, 4, leftCollapse);
-  const lDroop = lerp(0, activeSide === 'right' ? 14 : 5, leftCollapse);
+  let leftLoopBack = EMPTY_RIBBON_MESH;
+  let leftLoopFront = EMPTY_RIBBON_MESH;
+  let leftLoopCavernPath = '';
+  if (leftLoopOpacity > 0.002) {
+    const lSpan = lerp(88, 12, leftCollapse);
+    const lCornerH = lerp(24, 4, leftCollapse);
+    const lDroop = lerp(0, activeSide === 'right' ? 14 : 5, leftCollapse);
 
-  const leftLoopBackSpine = sampleBezierSpine(
-    [
-      {
-        p0: { x: knotCx - 4, y: knotCy - 3 },
-        p1: { x: knotCx - lSpan * 0.38, y: knotCy - lCornerH * 0.55 + lDroop * 0.2 },
-        p2: { x: knotCx - lSpan * 0.86, y: knotCy - lCornerH * 1.05 + lDroop * 0.55 },
-        p3: { x: knotCx - lSpan, y: knotCy - lCornerH * 0.45 + lDroop * 0.85 },
-        wStart: lerp(7.8, 5.2, leftCollapse),
-        wEnd: lerp(13.2, 8, leftCollapse),
-      },
-      {
-        p0: { x: knotCx - lSpan, y: knotCy - lCornerH * 0.45 + lDroop * 0.85 },
-        p1: { x: knotCx - lSpan * 1.04, y: knotCy - lCornerH * 0.05 + lDroop * 0.9 },
-        p2: { x: knotCx - lSpan * 1.04, y: knotCy + lCornerH * 0.2 + lDroop * 0.95 },
-        p3: { x: knotCx - lSpan * 0.98, y: knotCy + lCornerH * 0.55 + lDroop },
-        wStart: lerp(13.2, 8, leftCollapse),
-        wEnd: lerp(13.8, 8, leftCollapse),
-      },
-    ],
-    24
-  );
+    const leftLoopBackSpine = sampleBezierSpine(
+      [
+        {
+          p0: { x: knotCx - 4, y: knotCy - 3 },
+          p1: { x: knotCx - lSpan * 0.38, y: knotCy - lCornerH * 0.55 + lDroop * 0.2 },
+          p2: { x: knotCx - lSpan * 0.86, y: knotCy - lCornerH * 1.05 + lDroop * 0.55 },
+          p3: { x: knotCx - lSpan, y: knotCy - lCornerH * 0.45 + lDroop * 0.85 },
+          wStart: lerp(7.8, 5.2, leftCollapse),
+          wEnd: lerp(13.2, 8, leftCollapse),
+        },
+        {
+          p0: { x: knotCx - lSpan, y: knotCy - lCornerH * 0.45 + lDroop * 0.85 },
+          p1: { x: knotCx - lSpan * 1.04, y: knotCy - lCornerH * 0.05 + lDroop * 0.9 },
+          p2: { x: knotCx - lSpan * 1.04, y: knotCy + lCornerH * 0.2 + lDroop * 0.95 },
+          p3: { x: knotCx - lSpan * 0.98, y: knotCy + lCornerH * 0.55 + lDroop },
+          wStart: lerp(13.2, 8, leftCollapse),
+          wEnd: lerp(13.8, 8, leftCollapse),
+        },
+      ],
+      13
+    );
 
-  const leftLoopFrontSpine = sampleBezierSpine(
-    [
-      {
-        p0: { x: knotCx - lSpan * 0.98, y: knotCy + lCornerH * 0.55 + lDroop },
-        p1: { x: knotCx - lSpan * 0.85, y: knotCy + lCornerH * 1.08 + lDroop * 0.85 },
-        p2: { x: knotCx - lSpan * 0.36, y: knotCy + lCornerH * 0.6 + lDroop * 0.4 },
-        p3: { x: knotCx - 5, y: knotCy + 4 },
-        wStart: lerp(13.8, 8, leftCollapse),
-        wEnd: lerp(8.5, 6, leftCollapse),
-      },
-    ],
-    40
-  );
+    const leftLoopFrontSpine = sampleBezierSpine(
+      [
+        {
+          p0: { x: knotCx - lSpan * 0.98, y: knotCy + lCornerH * 0.55 + lDroop },
+          p1: { x: knotCx - lSpan * 0.85, y: knotCy + lCornerH * 1.08 + lDroop * 0.85 },
+          p2: { x: knotCx - lSpan * 0.36, y: knotCy + lCornerH * 0.6 + lDroop * 0.4 },
+          p3: { x: knotCx - 5, y: knotCy + 4 },
+          wStart: lerp(13.8, 8, leftCollapse),
+          wEnd: lerp(8.5, 6, leftCollapse),
+        },
+      ],
+      20
+    );
 
-  const lOuterX = knotCx - lSpan * 0.92;
-  const lMidX = knotCx - lSpan * 0.45;
-  const leftLoopCavernPath = `M ${(knotCx - 7).toFixed(1)},${(knotCy - 1).toFixed(1)} L ${lMidX.toFixed(1)},${(knotCy - lCornerH * 0.46 + lDroop * 0.4).toFixed(1)} L ${lOuterX.toFixed(1)},${(knotCy - lCornerH * 0.42 + lDroop * 0.7).toFixed(1)} L ${lOuterX.toFixed(1)},${(knotCy + lCornerH * 0.44 + lDroop * 0.8).toFixed(1)} L ${lMidX.toFixed(1)},${(knotCy + lCornerH * 0.48 + lDroop * 0.3).toFixed(1)} L ${(knotCx - 7).toFixed(1)},${(knotCy + 3).toFixed(1)} Z`;
+    const lOuterX = knotCx - lSpan * 0.92;
+    const lMidX = knotCx - lSpan * 0.45;
+    leftLoopCavernPath = `M ${(knotCx - 7).toFixed(1)},${(knotCy - 1).toFixed(1)} L ${lMidX.toFixed(1)},${(knotCy - lCornerH * 0.46 + lDroop * 0.4).toFixed(1)} L ${lOuterX.toFixed(1)},${(knotCy - lCornerH * 0.42 + lDroop * 0.7).toFixed(1)} L ${lOuterX.toFixed(1)},${(knotCy + lCornerH * 0.44 + lDroop * 0.8).toFixed(1)} L ${lMidX.toFixed(1)},${(knotCy + lCornerH * 0.48 + lDroop * 0.3).toFixed(1)} L ${(knotCx - 7).toFixed(1)},${(knotCy + 3).toFixed(1)} Z`;
+
+    leftLoopBack = buildRibbonMesh(leftLoopBackSpine, { pleats: 'fromStart', pleatReach: 0.56 });
+    leftLoopFront = buildRibbonMesh(leftLoopFrontSpine, { pleats: 'fromEnd', pleatReach: 0.62 });
+  }
 
   // RIGHT LOOP — Crisp tailored angular fold
-  const rSpan = lerp(91, 12, rightCollapse);
-  const rCornerH = lerp(23, 4, rightCollapse);
-  const rDroop = lerp(0, activeSide === 'left' ? 14 : 5, rightCollapse);
+  let rightLoopBack = EMPTY_RIBBON_MESH;
+  let rightLoopFront = EMPTY_RIBBON_MESH;
+  let rightLoopCavernPath = '';
+  if (rightLoopOpacity > 0.002) {
+    const rSpan = lerp(91, 12, rightCollapse);
+    const rCornerH = lerp(23, 4, rightCollapse);
+    const rDroop = lerp(0, activeSide === 'left' ? 14 : 5, rightCollapse);
 
-  const rightLoopBackSpine = sampleBezierSpine(
-    [
-      {
-        p0: { x: knotCx + 4, y: knotCy - 3 },
-        p1: { x: knotCx + rSpan * 0.38, y: knotCy - rCornerH * 0.56 + rDroop * 0.2 },
-        p2: { x: knotCx + rSpan * 0.86, y: knotCy - rCornerH * 1.04 + rDroop * 0.55 },
-        p3: { x: knotCx + rSpan, y: knotCy - rCornerH * 0.44 + rDroop * 0.85 },
-        wStart: lerp(7.8, 5.2, rightCollapse),
-        wEnd: lerp(13.2, 8, rightCollapse),
-      },
-      {
-        p0: { x: knotCx + rSpan, y: knotCy - rCornerH * 0.44 + rDroop * 0.85 },
-        p1: { x: knotCx + rSpan * 1.04, y: knotCy - rCornerH * 0.05 + rDroop * 0.9 },
-        p2: { x: knotCx + rSpan * 1.04, y: knotCy + rCornerH * 0.2 + rDroop * 0.95 },
-        p3: { x: knotCx + rSpan * 0.98, y: knotCy + rCornerH * 0.55 + rDroop },
-        wStart: lerp(13.2, 8, rightCollapse),
-        wEnd: lerp(13.8, 8, rightCollapse),
-      },
-    ],
-    24
-  );
+    const rightLoopBackSpine = sampleBezierSpine(
+      [
+        {
+          p0: { x: knotCx + 4, y: knotCy - 3 },
+          p1: { x: knotCx + rSpan * 0.38, y: knotCy - rCornerH * 0.56 + rDroop * 0.2 },
+          p2: { x: knotCx + rSpan * 0.86, y: knotCy - rCornerH * 1.04 + rDroop * 0.55 },
+          p3: { x: knotCx + rSpan, y: knotCy - rCornerH * 0.44 + rDroop * 0.85 },
+          wStart: lerp(7.8, 5.2, rightCollapse),
+          wEnd: lerp(13.2, 8, rightCollapse),
+        },
+        {
+          p0: { x: knotCx + rSpan, y: knotCy - rCornerH * 0.44 + rDroop * 0.85 },
+          p1: { x: knotCx + rSpan * 1.04, y: knotCy - rCornerH * 0.05 + rDroop * 0.9 },
+          p2: { x: knotCx + rSpan * 1.04, y: knotCy + rCornerH * 0.2 + rDroop * 0.95 },
+          p3: { x: knotCx + rSpan * 0.98, y: knotCy + rCornerH * 0.55 + rDroop },
+          wStart: lerp(13.2, 8, rightCollapse),
+          wEnd: lerp(13.8, 8, rightCollapse),
+        },
+      ],
+      13
+    );
 
-  const rightLoopFrontSpine = sampleBezierSpine(
-    [
-      {
-        p0: { x: knotCx + rSpan * 0.98, y: knotCy + rCornerH * 0.55 + rDroop },
-        p1: { x: knotCx + rSpan * 0.85, y: knotCy + rCornerH * 1.08 + rDroop * 0.85 },
-        p2: { x: knotCx + rSpan * 0.36, y: knotCy + rCornerH * 0.6 + rDroop * 0.4 },
-        p3: { x: knotCx + 5, y: knotCy + 4 },
-        wStart: lerp(13.8, 8, rightCollapse),
-        wEnd: lerp(8.5, 6, rightCollapse),
-      },
-    ],
-    40
-  );
+    const rightLoopFrontSpine = sampleBezierSpine(
+      [
+        {
+          p0: { x: knotCx + rSpan * 0.98, y: knotCy + rCornerH * 0.55 + rDroop },
+          p1: { x: knotCx + rSpan * 0.85, y: knotCy + rCornerH * 1.08 + rDroop * 0.85 },
+          p2: { x: knotCx + rSpan * 0.36, y: knotCy + rCornerH * 0.6 + rDroop * 0.4 },
+          p3: { x: knotCx + 5, y: knotCy + 4 },
+          wStart: lerp(13.8, 8, rightCollapse),
+          wEnd: lerp(8.5, 6, rightCollapse),
+        },
+      ],
+      20
+    );
 
-  const rOuterX = knotCx + rSpan * 0.92;
-  const rMidX = knotCx + rSpan * 0.45;
-  const rightLoopCavernPath = `M ${(knotCx + 7).toFixed(1)},${(knotCy - 1).toFixed(1)} L ${rMidX.toFixed(1)},${(knotCy - rCornerH * 0.46 + rDroop * 0.4).toFixed(1)} L ${rOuterX.toFixed(1)},${(knotCy - rCornerH * 0.42 + rDroop * 0.7).toFixed(1)} L ${rOuterX.toFixed(1)},${(knotCy + rCornerH * 0.44 + rDroop * 0.8).toFixed(1)} L ${rMidX.toFixed(1)},${(knotCy + rCornerH * 0.48 + rDroop * 0.3).toFixed(1)} L ${(knotCx + 7).toFixed(1)},${(knotCy + 3).toFixed(1)} Z`;
+    const rOuterX = knotCx + rSpan * 0.92;
+    const rMidX = knotCx + rSpan * 0.45;
+    rightLoopCavernPath = `M ${(knotCx + 7).toFixed(1)},${(knotCy - 1).toFixed(1)} L ${rMidX.toFixed(1)},${(knotCy - rCornerH * 0.46 + rDroop * 0.4).toFixed(1)} L ${rOuterX.toFixed(1)},${(knotCy - rCornerH * 0.42 + rDroop * 0.7).toFixed(1)} L ${rOuterX.toFixed(1)},${(knotCy + rCornerH * 0.44 + rDroop * 0.8).toFixed(1)} L ${rMidX.toFixed(1)},${(knotCy + rCornerH * 0.48 + rDroop * 0.3).toFixed(1)} L ${(knotCx + 7).toFixed(1)},${(knotCy + 3).toFixed(1)} Z`;
+
+    rightLoopBack = buildRibbonMesh(rightLoopBackSpine, { pleats: 'fromStart', pleatReach: 0.56 });
+    rightLoopFront = buildRibbonMesh(rightLoopFrontSpine, { pleats: 'fromEnd', pleatReach: 0.62 });
+  }
 
   // Hanging bow tails
   const leftPullOffset =
@@ -568,68 +603,91 @@ export function computeBowGeometry(
     y: lerp(256 + rightPullOffset.y * 0.85, looseRightTip.y, stripMorph),
   };
 
-  const leftTailSpine = sampleBezierSpine(
-    [
-      {
-        p0: { x: knotCx - 5, y: knotCy + 4 },
-        p1: {
-          x: lerp(knotCx - 22 + leftPullOffset.x * 0.25, knotCx - 34, stripMorph),
-          y: lerp(knotCy + 38 + leftPullOffset.y * 0.2, knotCy + 18, stripMorph),
+  let leftTail = EMPTY_RIBBON_MESH;
+  let rightTail = EMPTY_RIBBON_MESH;
+  if (tailsOpacity > 0.002) {
+    const leftTailSpine = sampleBezierSpine(
+      [
+        {
+          p0: { x: knotCx - 5, y: knotCy + 4 },
+          p1: {
+            x: lerp(knotCx - 22 + leftPullOffset.x * 0.25, knotCx - 34, stripMorph),
+            y: lerp(knotCy + 38 + leftPullOffset.y * 0.2, knotCy + 18, stripMorph),
+          },
+          p2: {
+            x: lerp(leftTailEnd.x + 14, looseLeftTip.x + 18, stripMorph),
+            y: lerp(leftTailEnd.y - 36, looseLeftTip.y - 12, stripMorph),
+          },
+          p3: leftTailEnd,
+          wStart: lerp(9, 12.2, stripMorph),
+          wEnd: 12.8,
         },
-        p2: {
-          x: lerp(leftTailEnd.x + 14, looseLeftTip.x + 18, stripMorph),
-          y: lerp(leftTailEnd.y - 36, looseLeftTip.y - 12, stripMorph),
-        },
-        p3: leftTailEnd,
-        wStart: lerp(9, 12.2, stripMorph),
-        wEnd: 12.8,
-      },
-    ],
-    40
-  );
+      ],
+      20
+    );
 
-  const rightTailSpine = sampleBezierSpine(
-    [
-      {
-        p0: { x: knotCx + 5, y: knotCy + 4 },
-        p1: {
-          x: lerp(knotCx + 22 + rightPullOffset.x * 0.25, knotCx + 34, stripMorph),
-          y: lerp(knotCy + 36 + rightPullOffset.y * 0.2, knotCy + 14, stripMorph),
+    const rightTailSpine = sampleBezierSpine(
+      [
+        {
+          p0: { x: knotCx + 5, y: knotCy + 4 },
+          p1: {
+            x: lerp(knotCx + 22 + rightPullOffset.x * 0.25, knotCx + 34, stripMorph),
+            y: lerp(knotCy + 36 + rightPullOffset.y * 0.2, knotCy + 14, stripMorph),
+          },
+          p2: {
+            x: lerp(rightTailEnd.x - 14, looseRightTip.x - 16, stripMorph),
+            y: lerp(rightTailEnd.y - 34, looseRightTip.y - 12, stripMorph),
+          },
+          p3: rightTailEnd,
+          wStart: lerp(9, 12.2, stripMorph),
+          wEnd: 12.8,
         },
-        p2: {
-          x: lerp(rightTailEnd.x - 14, looseRightTip.x - 16, stripMorph),
-          y: lerp(rightTailEnd.y - 34, looseRightTip.y - 12, stripMorph),
-        },
-        p3: rightTailEnd,
-        wStart: lerp(9, 12.2, stripMorph),
-        wEnd: 12.8,
-      },
-    ],
-    40
-  );
+      ],
+      20
+    );
+
+    leftTail = buildRibbonMesh(leftTailSpine, {
+      swallowtailDepth: 9,
+      pleats: 'fromStart',
+      pleatReach: 0.44,
+    });
+    rightTail = buildRibbonMesh(rightTailSpine, {
+      swallowtailDepth: 9,
+      pleats: 'fromStart',
+      pleatReach: 0.44,
+    });
+  }
 
   // Continuous untied bow strip resting across the cross center once knot releases
-  const continuousStripSpine = sampleBezierSpine(
-    [
-      {
-        p0: looseLeftTip,
-        p1: { x: 266, y: 184 },
-        p2: { x: knotCx - 24, y: knotCy + 18 },
-        p3: { x: knotCx, y: knotCy + 4 },
-        wStart: 12.8,
-        wEnd: 12.2,
-      },
-      {
-        p0: { x: knotCx, y: knotCy + 4 },
-        p1: { x: knotCx + 28, y: knotCy - 8 },
-        p2: { x: 364, y: 194 },
-        p3: looseRightTip,
-        wStart: 12.2,
-        wEnd: 12.8,
-      },
-    ],
-    34
-  );
+  let continuousLooseStrip = EMPTY_RIBBON_MESH;
+  if (looseStripOpacity > 0.002) {
+    const continuousStripSpine = sampleBezierSpine(
+      [
+        {
+          p0: looseLeftTip,
+          p1: { x: 266, y: 184 },
+          p2: { x: knotCx - 24, y: knotCy + 18 },
+          p3: { x: knotCx, y: knotCy + 4 },
+          wStart: 12.8,
+          wEnd: 12.2,
+        },
+        {
+          p0: { x: knotCx, y: knotCy + 4 },
+          p1: { x: knotCx + 28, y: knotCy - 8 },
+          p2: { x: 364, y: 194 },
+          p3: looseRightTip,
+          wStart: 12.2,
+          wEnd: 12.8,
+        },
+      ],
+      18
+    );
+
+    continuousLooseStrip = buildRibbonMesh(continuousStripSpine, {
+      swallowtailDepth: 9,
+      startSwallowtailDepth: 9,
+    });
+  }
 
   return {
     topArm: buildRibbonMesh(topArmSpine, { swallowtailDepth: tOpen > 0.05 ? 7 : 0 }),
@@ -642,32 +700,21 @@ export function computeBowGeometry(
       left: leftTip,
       right: rightTip,
     },
-    leftLoopBack: buildRibbonMesh(leftLoopBackSpine, { pleats: 'fromStart', pleatReach: 0.56 }),
-    leftLoopFront: buildRibbonMesh(leftLoopFrontSpine, { pleats: 'fromEnd', pleatReach: 0.62 }),
+    leftLoopBack,
+    leftLoopFront,
     leftLoopCavernPath,
-    rightLoopBack: buildRibbonMesh(rightLoopBackSpine, { pleats: 'fromStart', pleatReach: 0.56 }),
-    rightLoopFront: buildRibbonMesh(rightLoopFrontSpine, { pleats: 'fromEnd', pleatReach: 0.62 }),
+    rightLoopBack,
+    rightLoopFront,
     rightLoopCavernPath,
-    leftTail: buildRibbonMesh(leftTailSpine, {
-      swallowtailDepth: 9,
-      pleats: 'fromStart',
-      pleatReach: 0.44,
-    }),
-    rightTail: buildRibbonMesh(rightTailSpine, {
-      swallowtailDepth: 9,
-      pleats: 'fromStart',
-      pleatReach: 0.44,
-    }),
-    continuousLooseStrip: buildRibbonMesh(continuousStripSpine, {
-      swallowtailDepth: 9,
-      startSwallowtailDepth: 9,
-    }),
-    leftLoopOpacity: 1 - smoothstep(0.66, 0.92, leftCollapse),
-    rightLoopOpacity: 1 - smoothstep(0.66, 0.92, rightCollapse),
-    pleatsOpacity: 1 - smoothstep(0.35, 0.82, progress),
-    tailsOpacity: 1 - smoothstep(0.84, 1.0, progress),
-    looseStripOpacity: smoothstep(0.76, 0.98, progress),
-    knotOpacity: 1 - smoothstep(0.68, 0.94, progress),
+    leftTail,
+    rightTail,
+    continuousLooseStrip,
+    leftLoopOpacity,
+    rightLoopOpacity,
+    pleatsOpacity,
+    tailsOpacity,
+    looseStripOpacity,
+    knotOpacity,
     knotTransform: {
       cx: knotCx,
       cy: knotCy,

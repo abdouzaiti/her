@@ -365,6 +365,7 @@ export const TelegramEnvelope: React.FC<TelegramEnvelopeProps> = ({
             backgroundImage: PAPER_GRAIN_SVG,
             opacity: isUnfolded ? 0 : 1,
             transition: 'opacity 0.25s ease',
+            touchAction: canGrabLetter ? 'none' : 'auto',
           }}
           className={`absolute left-[6.5%] right-[6.5%] top-[8%] bottom-[8%] rounded-[3px] paper-surface border border-[#DFD2C0] shadow-[0_-2px_10px_rgba(57,48,46,0.09),0_4px_12px_rgba(57,48,46,0.12)] ${
             canGrabLetter ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
@@ -460,32 +461,6 @@ export const TelegramEnvelope: React.FC<TelegramEnvelopeProps> = ({
               strokeWidth="1"
             />
           </g>
-
-          {/* Subtle vintage French telegram typography on lower pocket */}
-          <g opacity="0.62">
-            <text
-              x="220"
-              y="258"
-              textAnchor="middle"
-              className="font-editorial"
-              fill="#7A6554"
-              fontSize="9.5"
-              letterSpacing="3.2"
-            >
-              {config.telegramHeader}
-            </text>
-            <text
-              x="220"
-              y="274"
-              textAnchor="middle"
-              className="font-editorial"
-              fill="#998472"
-              fontSize="8"
-              letterSpacing="2.2"
-            >
-              {config.postmarkCity} · {config.dispatchNumber}
-            </text>
-          </g>
         </svg>
 
         {/* Shadow cast by the top triangular flap onto the pocket */}
@@ -511,6 +486,7 @@ export const TelegramEnvelope: React.FC<TelegramEnvelopeProps> = ({
             zIndex: flapPastHalf ? 12 : 30,
             transformOrigin: 'top center',
             transformStyle: 'preserve-3d',
+            touchAction: canGrabFlap ? 'none' : 'auto',
           }}
           className={`absolute inset-x-0 top-0 h-[62%] ${
             canGrabFlap ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'

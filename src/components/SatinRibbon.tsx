@@ -102,6 +102,8 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
   isCompactViewport,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const inverseCtmRef = useRef<DOMMatrix | null>(null);
+  const wakeRafRef = useRef<(() => void) | null>(null);
 
   const [openedArms, setOpenedArms] = useState<{
     top: boolean;
@@ -286,49 +288,76 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
     ) {
       p.targetOpacity = 0.85;
     }
+    wakeRafRef.current?.();
   }, [phase, isCompactViewport, onOpenedSidesChange]);
 
-  const clientToSvg = (clientX: number, clientY: number): Vec2 => {
+  const refreshInverseCtm = () => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const ctm = svg.getScreenCTM();
+    inverseCtmRef.current = ctm ? ctm.inverse() : null;
+  };
+
+  const clientToSvg = (clientX: number, clientY: number, refresh = false): Vec2 => {
     const svg = svgRef.current;
     if (!svg) return { x: clientX, y: clientY };
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return { x: clientX, y: clientY };
+    if (refresh || !inverseCtmRef.current) {
+      refreshInverseCtm();
+    }
+    const inv = inverseCtmRef.current;
+    if (!inv) return { x: clientX, y: clientY };
     const pt = svg.createSVGPoint();
     pt.x = clientX;
     pt.y = clientY;
-    const transformed = pt.matrixTransform(ctm.inverse());
+    const transformed = pt.matrixTransform(inv);
     return { x: transformed.x, y: transformed.y };
   };
 
   useEffect(() => {
     let rafId = 0;
+    let running = false;
+    let lastTime = 0;
     let untieCompleteSent = false;
+    let wasLeftLoopVisible = true;
+    let wasRightLoopVisible = true;
+    let wasTailsVisible = true;
+    let wasLooseVisible = false;
 
-    const tick = () => {
+    const smoothFactor = (speed: number, dt: number) => 1 - Math.exp(-speed * dt);
+
+    const step = (now: number) => {
+      const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 1 / 60;
+      lastTime = now;
+
       const p = physicsRef.current;
+      const isDragging = dragSessionRef.current.mode !== 'none';
 
-      const uRate = dragSessionRef.current.mode === 'untie' ? 0.28 : 0.14;
+      const uRate = smoothFactor(dragSessionRef.current.mode === 'untie' ? 24 : 9.5, dt);
+      const pullRate = smoothFactor(18, dt);
+      const armRate = smoothFactor(dragSessionRef.current.mode === 'openArm' ? 25 : 10.5, dt);
+      const liftRate = smoothFactor(dragSessionRef.current.mode === 'remove' ? 26 : 11, dt);
+      const opRate = smoothFactor(8, dt);
+
       p.u = lerp(p.u, p.targetU, uRate);
-      p.pull.x = lerp(p.pull.x, p.targetPull.x, 0.24);
-      p.pull.y = lerp(p.pull.y, p.targetPull.y, 0.24);
+      p.pull.x = lerp(p.pull.x, p.targetPull.x, pullRate);
+      p.pull.y = lerp(p.pull.y, p.targetPull.y, pullRate);
 
-      const armRate = dragSessionRef.current.mode === 'openArm' ? 0.3 : 0.15;
       (['top', 'bottom', 'left', 'right'] as WrapArmKey[]).forEach((k) => {
         p.armOpen[k] = lerp(p.armOpen[k], p.targetArmOpen[k], armRate);
-        p.armDrags[k].x = lerp(p.armDrags[k].x, p.targetArmDrags[k].x, 0.24);
-        p.armDrags[k].y = lerp(p.armDrags[k].y, p.targetArmDrags[k].y, 0.24);
+        p.armDrags[k].x = lerp(p.armDrags[k].x, p.targetArmDrags[k].x, pullRate);
+        p.armDrags[k].y = lerp(p.armDrags[k].y, p.targetArmDrags[k].y, pullRate);
       });
 
-      p.liftOffset.x = lerp(p.liftOffset.x, p.targetLiftOffset.x, 0.16);
-      p.liftOffset.y = lerp(p.liftOffset.y, p.targetLiftOffset.y, 0.16);
-      p.liftScale = lerp(p.liftScale, p.targetLiftScale, 0.16);
-      p.liftRot = lerp(p.liftRot, p.targetLiftRot, 0.16);
-      p.opacity = lerp(p.opacity, p.targetOpacity, 0.12);
+      p.liftOffset.x = lerp(p.liftOffset.x, p.targetLiftOffset.x, liftRate);
+      p.liftOffset.y = lerp(p.liftOffset.y, p.targetLiftOffset.y, liftRate);
+      p.liftScale = lerp(p.liftScale, p.targetLiftScale, liftRate);
+      p.liftRot = lerp(p.liftRot, p.targetLiftRot, liftRate);
+      p.opacity = lerp(p.opacity, p.targetOpacity, opRate);
 
       if (
         phaseRef.current === 'UNTIE_IN_PROGRESS' &&
         p.targetU >= 0.99 &&
-        p.u >= 0.96 &&
+        p.u >= 0.95 &&
         !untieCompleteSent
       ) {
         untieCompleteSent = true;
@@ -346,7 +375,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
       if (groupRef.current) {
         groupRef.current.setAttribute(
           'transform',
-          `translate(${p.liftOffset.x.toFixed(2)}, ${p.liftOffset.y.toFixed(2)}) rotate(${p.liftRot.toFixed(2)}, ${geo.bowCenter.x}, ${geo.bowCenter.y}) scale(${p.liftScale.toFixed(3)})`
+          `translate(${p.liftOffset.x.toFixed(1)}, ${p.liftOffset.y.toFixed(1)}) rotate(${p.liftRot.toFixed(1)}, ${geo.bowCenter.x}, ${geo.bowCenter.y}) scale(${p.liftScale.toFixed(3)})`
         );
         groupRef.current.style.opacity = p.opacity.toFixed(3);
       }
@@ -354,7 +383,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
       if (ambientShadowGroupRef.current) {
         ambientShadowGroupRef.current.setAttribute(
           'transform',
-          `translate(${(p.liftOffset.x + shadowShiftX).toFixed(2)}, ${(p.liftOffset.y + shadowShiftY).toFixed(2)}) rotate(${p.liftRot.toFixed(2)}, ${geo.bowCenter.x}, ${geo.bowCenter.y}) scale(${p.liftScale.toFixed(3)})`
+          `translate(${(p.liftOffset.x + shadowShiftX).toFixed(1)}, ${(p.liftOffset.y + shadowShiftY).toFixed(1)}) rotate(${p.liftRot.toFixed(1)}, ${geo.bowCenter.x}, ${geo.bowCenter.y}) scale(${p.liftScale.toFixed(3)})`
         );
         ambientShadowGroupRef.current.style.opacity = (
           p.opacity * clamp(1 - liftDist / 450, 0.35, 1)
@@ -365,7 +394,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
         const contactFade = clamp(1 - liftDist / 70, 0.2, 1);
         contactShadowGroupRef.current.setAttribute(
           'transform',
-          `translate(${(p.liftOffset.x + 1.2).toFixed(2)}, ${(p.liftOffset.y + 2.1).toFixed(2)}) rotate(${p.liftRot.toFixed(2)}, ${geo.bowCenter.x}, ${geo.bowCenter.y}) scale(${p.liftScale.toFixed(3)})`
+          `translate(${(p.liftOffset.x + 1.2).toFixed(1)}, ${(p.liftOffset.y + 2.1).toFixed(1)}) rotate(${p.liftRot.toFixed(1)}, ${geo.bowCenter.x}, ${geo.bowCenter.y}) scale(${p.liftScale.toFixed(3)})`
         );
         contactShadowGroupRef.current.style.opacity = (p.opacity * contactFade).toFixed(3);
       }
@@ -394,83 +423,92 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
         }
       });
 
-      // Left loop
-      if (lLoopBackGroupRef.current) lLoopBackGroupRef.current.style.opacity = geo.leftLoopOpacity.toFixed(3);
-      applyMeshToRefs(lLoopBackRef.current, geo.leftLoopBack, geo.pleatsOpacity);
-      if (lLoopCavernRef.current) {
-        lLoopCavernRef.current.setAttribute('d', geo.leftLoopCavernPath);
-        lLoopCavernRef.current.style.opacity = (geo.leftLoopOpacity * geo.pleatsOpacity).toFixed(3);
-      }
-      if (lLoopFrontGroupRef.current) lLoopFrontGroupRef.current.style.opacity = geo.leftLoopOpacity.toFixed(3);
-      applyMeshToRefs(lLoopFrontRef.current, geo.leftLoopFront, geo.pleatsOpacity);
-      if (shLLoopRef.current) {
-        shLLoopRef.current.setAttribute('d', geo.leftLoopFront.bodyPath);
-        shLLoopRef.current.style.opacity = geo.leftLoopOpacity.toFixed(3);
+      // Left loop (only mutate paths when visible or transitioning out)
+      const leftLoopVis = geo.leftLoopOpacity > 0.002;
+      if (leftLoopVis || wasLeftLoopVisible) {
+        wasLeftLoopVisible = leftLoopVis;
+        if (lLoopBackGroupRef.current) lLoopBackGroupRef.current.style.opacity = geo.leftLoopOpacity.toFixed(3);
+        if (lLoopFrontGroupRef.current) lLoopFrontGroupRef.current.style.opacity = geo.leftLoopOpacity.toFixed(3);
+        if (shLLoopRef.current) shLLoopRef.current.style.opacity = geo.leftLoopOpacity.toFixed(3);
+        if (leftLoopVis) {
+          applyMeshToRefs(lLoopBackRef.current, geo.leftLoopBack, geo.pleatsOpacity);
+          applyMeshToRefs(lLoopFrontRef.current, geo.leftLoopFront, geo.pleatsOpacity);
+          if (lLoopCavernRef.current) {
+            lLoopCavernRef.current.setAttribute('d', geo.leftLoopCavernPath);
+            lLoopCavernRef.current.style.opacity = (geo.leftLoopOpacity * geo.pleatsOpacity).toFixed(3);
+          }
+          shLLoopRef.current?.setAttribute('d', geo.leftLoopFront.bodyPath);
+        }
       }
 
       // Right loop
-      if (rLoopBackGroupRef.current) rLoopBackGroupRef.current.style.opacity = geo.rightLoopOpacity.toFixed(3);
-      applyMeshToRefs(rLoopBackRef.current, geo.rightLoopBack, geo.pleatsOpacity);
-      if (rLoopCavernRef.current) {
-        rLoopCavernRef.current.setAttribute('d', geo.rightLoopCavernPath);
-        rLoopCavernRef.current.style.opacity = (geo.rightLoopOpacity * geo.pleatsOpacity).toFixed(3);
-      }
-      if (rLoopFrontGroupRef.current) rLoopFrontGroupRef.current.style.opacity = geo.rightLoopOpacity.toFixed(3);
-      applyMeshToRefs(rLoopFrontRef.current, geo.rightLoopFront, geo.pleatsOpacity);
-      if (shRLoopRef.current) {
-        shRLoopRef.current.setAttribute('d', geo.rightLoopFront.bodyPath);
-        shRLoopRef.current.style.opacity = geo.rightLoopOpacity.toFixed(3);
+      const rightLoopVis = geo.rightLoopOpacity > 0.002;
+      if (rightLoopVis || wasRightLoopVisible) {
+        wasRightLoopVisible = rightLoopVis;
+        if (rLoopBackGroupRef.current) rLoopBackGroupRef.current.style.opacity = geo.rightLoopOpacity.toFixed(3);
+        if (rLoopFrontGroupRef.current) rLoopFrontGroupRef.current.style.opacity = geo.rightLoopOpacity.toFixed(3);
+        if (shRLoopRef.current) shRLoopRef.current.style.opacity = geo.rightLoopOpacity.toFixed(3);
+        if (rightLoopVis) {
+          applyMeshToRefs(rLoopBackRef.current, geo.rightLoopBack, geo.pleatsOpacity);
+          applyMeshToRefs(rLoopFrontRef.current, geo.rightLoopFront, geo.pleatsOpacity);
+          if (rLoopCavernRef.current) {
+            rLoopCavernRef.current.setAttribute('d', geo.rightLoopCavernPath);
+            rLoopCavernRef.current.style.opacity = (geo.rightLoopOpacity * geo.pleatsOpacity).toFixed(3);
+          }
+          shRLoopRef.current?.setAttribute('d', geo.rightLoopFront.bodyPath);
+        }
       }
 
       // Hanging tails
-      if (tailsGroupRef.current) tailsGroupRef.current.style.opacity = geo.tailsOpacity.toFixed(3);
-      applyMeshToRefs(lTailRef.current, geo.leftTail, geo.pleatsOpacity);
-      applyMeshToRefs(rTailRef.current, geo.rightTail, geo.pleatsOpacity);
-
-      if (shLTailRef.current) {
-        shLTailRef.current.setAttribute('d', geo.leftTail.bodyPath);
-        shLTailRef.current.style.opacity = geo.tailsOpacity.toFixed(3);
-      }
-      if (cShLTailRef.current) {
-        cShLTailRef.current.setAttribute('d', geo.leftTail.bodyPath);
-        cShLTailRef.current.style.opacity = geo.tailsOpacity.toFixed(3);
-      }
-      if (shRTailRef.current) {
-        shRTailRef.current.setAttribute('d', geo.rightTail.bodyPath);
-        shRTailRef.current.style.opacity = geo.tailsOpacity.toFixed(3);
-      }
-      if (cShRTailRef.current) {
-        cShRTailRef.current.setAttribute('d', geo.rightTail.bodyPath);
-        cShRTailRef.current.style.opacity = geo.tailsOpacity.toFixed(3);
+      const tailsVis = geo.tailsOpacity > 0.002;
+      if (tailsVis || wasTailsVisible) {
+        wasTailsVisible = tailsVis;
+        if (tailsGroupRef.current) tailsGroupRef.current.style.opacity = geo.tailsOpacity.toFixed(3);
+        if (shLTailRef.current) shLTailRef.current.style.opacity = geo.tailsOpacity.toFixed(3);
+        if (cShLTailRef.current) cShLTailRef.current.style.opacity = geo.tailsOpacity.toFixed(3);
+        if (shRTailRef.current) shRTailRef.current.style.opacity = geo.tailsOpacity.toFixed(3);
+        if (cShRTailRef.current) cShRTailRef.current.style.opacity = geo.tailsOpacity.toFixed(3);
+        if (tailsVis) {
+          applyMeshToRefs(lTailRef.current, geo.leftTail, geo.pleatsOpacity);
+          applyMeshToRefs(rTailRef.current, geo.rightTail, geo.pleatsOpacity);
+          shLTailRef.current?.setAttribute('d', geo.leftTail.bodyPath);
+          cShLTailRef.current?.setAttribute('d', geo.leftTail.bodyPath);
+          shRTailRef.current?.setAttribute('d', geo.rightTail.bodyPath);
+          cShRTailRef.current?.setAttribute('d', geo.rightTail.bodyPath);
+        }
       }
 
       // Continuous loose bow strip
-      if (looseStripGroupRef.current) {
-        looseStripGroupRef.current.style.opacity = geo.looseStripOpacity.toFixed(3);
-      }
-      applyMeshToRefs(looseStripRef.current, geo.continuousLooseStrip, 0);
-      if (shLooseRef.current) {
-        shLooseRef.current.setAttribute('d', geo.continuousLooseStrip.bodyPath);
-        shLooseRef.current.style.opacity = geo.looseStripOpacity.toFixed(3);
-      }
-      if (cShLooseRef.current) {
-        cShLooseRef.current.setAttribute('d', geo.continuousLooseStrip.bodyPath);
-        cShLooseRef.current.style.opacity = geo.looseStripOpacity.toFixed(3);
+      const looseVis = geo.looseStripOpacity > 0.002;
+      if (looseVis || wasLooseVisible) {
+        wasLooseVisible = looseVis;
+        if (looseStripGroupRef.current) looseStripGroupRef.current.style.opacity = geo.looseStripOpacity.toFixed(3);
+        if (shLooseRef.current) shLooseRef.current.style.opacity = geo.looseStripOpacity.toFixed(3);
+        if (cShLooseRef.current) cShLooseRef.current.style.opacity = geo.looseStripOpacity.toFixed(3);
+        if (looseVis) {
+          applyMeshToRefs(looseStripRef.current, geo.continuousLooseStrip, 0);
+          shLooseRef.current?.setAttribute('d', geo.continuousLooseStrip.bodyPath);
+          cShLooseRef.current?.setAttribute('d', geo.continuousLooseStrip.bodyPath);
+        }
       }
 
       // Center knot
       const kt = geo.knotTransform;
       if (knotGroupRef.current) {
         knotGroupRef.current.style.opacity = geo.knotOpacity.toFixed(3);
-        knotGroupRef.current.setAttribute(
-          'transform',
-          `translate(${kt.cx.toFixed(2)}, ${kt.cy.toFixed(2)}) rotate(${kt.rotateDeg.toFixed(2)}) scale(${kt.scaleX.toFixed(3)}, ${kt.scaleY.toFixed(3)})`
-        );
+        if (geo.knotOpacity > 0.002) {
+          knotGroupRef.current.setAttribute(
+            'transform',
+            `translate(${kt.cx.toFixed(1)}, ${kt.cy.toFixed(1)}) rotate(${kt.rotateDeg.toFixed(1)}) scale(${kt.scaleX.toFixed(3)}, ${kt.scaleY.toFixed(3)})`
+          );
+        }
       }
       if (cShKnotRef.current) {
         cShKnotRef.current.style.opacity = geo.knotOpacity.toFixed(3);
-        cShKnotRef.current.setAttribute('cx', kt.cx.toFixed(2));
-        cShKnotRef.current.setAttribute('cy', (kt.cy + 2).toFixed(2));
+        if (geo.knotOpacity > 0.002) {
+          cShKnotRef.current.setAttribute('cx', kt.cx.toFixed(1));
+          cShKnotRef.current.setAttribute('cy', (kt.cy + 2).toFixed(1));
+        }
       }
 
       if (leftHitRef.current) {
@@ -486,11 +524,62 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
         rightCueRef.current.setAttribute('cy', geo.rightTailTip.y.toFixed(1));
       }
 
-      rafId = requestAnimationFrame(tick);
+      const settled =
+        !isDragging &&
+        Math.abs(p.u - p.targetU) < 0.0008 &&
+        Math.abs(p.pull.x - p.targetPull.x) < 0.08 &&
+        Math.abs(p.pull.y - p.targetPull.y) < 0.08 &&
+        Math.abs(p.liftOffset.x - p.targetLiftOffset.x) < 0.1 &&
+        Math.abs(p.liftOffset.y - p.targetLiftOffset.y) < 0.1 &&
+        Math.abs(p.liftScale - p.targetLiftScale) < 0.0008 &&
+        Math.abs(p.liftRot - p.targetLiftRot) < 0.05 &&
+        Math.abs(p.opacity - p.targetOpacity) < 0.002 &&
+        (['top', 'bottom', 'left', 'right'] as WrapArmKey[]).every(
+          (k) =>
+            Math.abs(p.armOpen[k] - p.targetArmOpen[k]) < 0.0008 &&
+            Math.abs(p.armDrags[k].x - p.targetArmDrags[k].x) < 0.08 &&
+            Math.abs(p.armDrags[k].y - p.targetArmDrags[k].y) < 0.08
+        );
+
+      if (settled) {
+        // Snap exact target values and sleep until next interaction
+        p.u = p.targetU;
+        p.pull.x = p.targetPull.x;
+        p.pull.y = p.targetPull.y;
+        p.liftOffset.x = p.targetLiftOffset.x;
+        p.liftOffset.y = p.targetLiftOffset.y;
+        p.liftScale = p.targetLiftScale;
+        p.liftRot = p.targetLiftRot;
+        p.opacity = p.targetOpacity;
+        (['top', 'bottom', 'left', 'right'] as WrapArmKey[]).forEach((k) => {
+          p.armOpen[k] = p.targetArmOpen[k];
+          p.armDrags[k].x = p.targetArmDrags[k].x;
+          p.armDrags[k].y = p.targetArmDrags[k].y;
+        });
+        running = false;
+        lastTime = 0;
+        return;
+      }
+
+      rafId = requestAnimationFrame(step);
     };
 
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
+    const wake = () => {
+      if (!running) {
+        running = true;
+        lastTime = 0;
+        rafId = requestAnimationFrame(step);
+      }
+    };
+
+    wakeRafRef.current = wake;
+    wake();
+
+    return () => {
+      wakeRafRef.current = null;
+      running = false;
+      cancelAnimationFrame(rafId);
+    };
   }, [onUntieComplete]);
 
   const markArmOpened = (armKey: WrapArmKey) => {
@@ -508,7 +597,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
 
-    const svgPt = clientToSvg(e.clientX, e.clientY);
+    const svgPt = clientToSvg(e.clientX, e.clientY, true);
     physicsRef.current.activeSide = side;
 
     dragSessionRef.current = {
@@ -522,6 +611,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
       completedRemoval: false,
     };
 
+    wakeRafRef.current?.();
     if (phase === 'CLOSED_WITH_RIBBON') {
       onUntieStart();
     }
@@ -532,7 +622,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
 
-    const svgPt = clientToSvg(e.clientX, e.clientY);
+    const svgPt = clientToSvg(e.clientX, e.clientY, true);
     dragSessionRef.current = {
       mode: 'openArm',
       armKey,
@@ -543,6 +633,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
       lastSvg: svgPt,
       completedRemoval: false,
     };
+    wakeRafRef.current?.();
   };
 
   const handleLooseRibbonPointerDown = (e: React.PointerEvent<SVGElement>) => {
@@ -550,7 +641,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
 
-    const svgPt = clientToSvg(e.clientX, e.clientY);
+    const svgPt = clientToSvg(e.clientX, e.clientY, true);
     dragSessionRef.current = {
       mode: 'remove',
       armKey: 'top',
@@ -563,6 +654,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
     };
 
     physicsRef.current.targetLiftScale = 1.03;
+    wakeRafRef.current?.();
   };
 
   const handlePointerMove = (e: React.PointerEvent<SVGElement>) => {
@@ -576,11 +668,13 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
 
     if (session.mode === 'untie') {
       const dir = p.activeSide === 'right' ? 1 : -1;
-      const directionalPull = dx * dir * 0.85 + dy * 0.52;
-      const radialAssist = Math.hypot(dx, dy) * 0.35 * (dx * dir > -20 ? 1 : 0);
-      const effectiveDist = Math.max(0, directionalPull + radialAssist);
+      const effectiveDist = Math.max(
+        0,
+        dx * dir * 0.62 + Math.max(0, dy) * 0.55 + Math.hypot(dx, dy) * 0.38
+      );
+      const untieSpan = isCompactViewport ? 115 : 140;
 
-      const nextU = clamp(session.baseU + effectiveDist / 145, 0, 1);
+      const nextU = clamp(session.baseU + effectiveDist / untieSpan, 0, 1);
       p.targetU = nextU;
       p.targetPull = {
         x: clamp(dx, -170, 170),
@@ -588,7 +682,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
       };
       onUntieProgress?.(nextU);
 
-      if (nextU >= 0.96) {
+      if (nextU >= 0.95) {
         p.targetU = 1;
         p.targetPull = { x: 0, y: 0 };
         session.mode = 'none';
@@ -598,16 +692,16 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
       }
     } else if (session.mode === 'openArm') {
       const key = session.armKey;
-      // Forgiving pull distance in any natural peeling direction (inward or outward)
       const dragDist = Math.hypot(dx, dy);
-      const nextOpen = clamp(session.baseArmOpen + dragDist / 68, 0, 1);
+      const armSpan = isCompactViewport ? 52 : 66;
+      const nextOpen = clamp(session.baseArmOpen + dragDist / armSpan, 0, 1);
       p.targetArmOpen[key] = nextOpen;
       p.targetArmDrags[key] = {
         x: clamp(dx, -75, 75),
         y: clamp(dy, -75, 75),
       };
 
-      if (nextOpen >= 0.9) {
+      if (nextOpen >= 0.88) {
         p.targetArmOpen[key] = 1;
         p.targetArmDrags[key] = { x: 0, y: 0 };
         markArmOpened(key);
@@ -625,7 +719,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
       p.targetLiftScale = 1.03;
 
       const dist = Math.hypot(dx, dy);
-      if (dist > 145 && !session.completedRemoval) {
+      if (dist > (isCompactViewport ? 118 : 145) && !session.completedRemoval) {
         session.completedRemoval = true;
         session.mode = 'none';
         p.settledSide = dx >= 0 ? 'right' : 'left';
@@ -635,6 +729,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
         onRibbonRemoved();
       }
     }
+    wakeRafRef.current?.();
   };
 
   const handlePointerUp = (e: React.PointerEvent<SVGElement>) => {
@@ -648,7 +743,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
     const p = physicsRef.current;
 
     if (session.mode === 'untie') {
-      if (p.targetU >= 0.82) {
+      if (p.targetU >= 0.78) {
         p.targetU = 1;
         p.targetPull = { x: 0, y: 0 };
       } else {
@@ -659,7 +754,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
       }
     } else if (session.mode === 'openArm') {
       const key = session.armKey;
-      if (p.targetArmOpen[key] >= 0.45) {
+      if (p.targetArmOpen[key] >= 0.42) {
         p.targetArmOpen[key] = 1;
         p.targetArmDrags[key] = { x: 0, y: 0 };
         markArmOpened(key);
@@ -669,7 +764,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
       }
     } else if (session.mode === 'remove') {
       const dist = Math.hypot(p.targetLiftOffset.x, p.targetLiftOffset.y);
-      if (dist >= 95 && !session.completedRemoval) {
+      if (dist >= 85 && !session.completedRemoval) {
         session.completedRemoval = true;
         p.settledSide = p.targetLiftOffset.x >= 0 ? 'right' : 'left';
         onRibbonRemoved();
@@ -682,6 +777,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
 
     session.mode = 'none';
     session.pointerId = null;
+    wakeRafRef.current?.();
   };
 
   const isUntiePhase = phase === 'CLOSED_WITH_RIBBON' || phase === 'UNTIE_IN_PROGRESS';
@@ -845,47 +941,36 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
           <stop offset="100%" stopColor="#965065" />
         </radialGradient>
 
-        <pattern id="satin-micro-weave" width="2.4" height="2.4" patternUnits="userSpaceOnUse">
-          <path d="M 0 0.6 L 2.4 0.6" stroke="#FFFFFF" strokeWidth="0.35" strokeOpacity="0.18" />
-          <path d="M 0 1.8 L 2.4 1.8" stroke="#8E4A5F" strokeWidth="0.28" strokeOpacity="0.12" />
-          <path d="M 0.8 0 L 0.8 2.4" stroke="#FFFFFF" strokeWidth="0.22" strokeOpacity="0.1" />
-          <path d="M 2.0 0 L 2.0 2.4" stroke="#7A3C4F" strokeWidth="0.2" strokeOpacity="0.09" />
+        <pattern id="satin-micro-weave" width="3" height="3" patternUnits="userSpaceOnUse">
+          <path d="M 0 0.8 L 3 0.8" stroke="#FFFFFF" strokeWidth="0.35" strokeOpacity="0.16" />
+          <path d="M 0 2.2 L 3 2.2" stroke="#8E4A5F" strokeWidth="0.28" strokeOpacity="0.11" />
+          <path d="M 1.0 0 L 1.0 3" stroke="#FFFFFF" strokeWidth="0.22" strokeOpacity="0.09" />
         </pattern>
-
-        <filter id="ribbon-ambient-shadow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="5.2" />
-        </filter>
-        <filter id="ribbon-contact-shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="1.4" />
-        </filter>
-        <filter id="loop-cavern-blur" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="2.4" />
-        </filter>
       </defs>
 
-      {/* Layer A: Wide soft ambient shadow */}
-      <g ref={ambientShadowGroupRef} filter="url(#ribbon-ambient-shadow)" className="pointer-events-none">
-        <path ref={shTopArmRef} fill="rgba(57, 48, 46, 0.14)" />
-        <path ref={shBottomArmRef} fill="rgba(57, 48, 46, 0.14)" />
-        <path ref={shLeftArmRef} fill="rgba(57, 48, 46, 0.15)" />
-        <path ref={shRightArmRef} fill="rgba(57, 48, 46, 0.15)" />
-        <path ref={shLLoopRef} fill="rgba(57, 48, 46, 0.23)" />
-        <path ref={shRLoopRef} fill="rgba(57, 48, 46, 0.23)" />
-        <path ref={shLTailRef} fill="rgba(57, 48, 46, 0.19)" />
-        <path ref={shRTailRef} fill="rgba(57, 48, 46, 0.19)" />
-        <path ref={shLooseRef} fill="rgba(57, 48, 46, 0.18)" />
+      {/* Layer A: Soft GPU-friendly ambient shadow (no SVG Gaussian filter pass for 60fps mobile) */}
+      <g ref={ambientShadowGroupRef} className="pointer-events-none">
+        <path ref={shTopArmRef} fill="rgba(57, 48, 46, 0.08)" stroke="rgba(57, 48, 46, 0.04)" strokeWidth="6" strokeLinejoin="round" />
+        <path ref={shBottomArmRef} fill="rgba(57, 48, 46, 0.08)" stroke="rgba(57, 48, 46, 0.04)" strokeWidth="6" strokeLinejoin="round" />
+        <path ref={shLeftArmRef} fill="rgba(57, 48, 46, 0.085)" stroke="rgba(57, 48, 46, 0.04)" strokeWidth="6" strokeLinejoin="round" />
+        <path ref={shRightArmRef} fill="rgba(57, 48, 46, 0.085)" stroke="rgba(57, 48, 46, 0.04)" strokeWidth="6" strokeLinejoin="round" />
+        <path ref={shLLoopRef} fill="rgba(57, 48, 46, 0.12)" stroke="rgba(57, 48, 46, 0.055)" strokeWidth="7" strokeLinejoin="round" />
+        <path ref={shRLoopRef} fill="rgba(57, 48, 46, 0.12)" stroke="rgba(57, 48, 46, 0.055)" strokeWidth="7" strokeLinejoin="round" />
+        <path ref={shLTailRef} fill="rgba(57, 48, 46, 0.11)" stroke="rgba(57, 48, 46, 0.045)" strokeWidth="6" strokeLinejoin="round" />
+        <path ref={shRTailRef} fill="rgba(57, 48, 46, 0.11)" stroke="rgba(57, 48, 46, 0.045)" strokeWidth="6" strokeLinejoin="round" />
+        <path ref={shLooseRef} fill="rgba(57, 48, 46, 0.10)" stroke="rgba(57, 48, 46, 0.04)" strokeWidth="6" strokeLinejoin="round" />
       </g>
 
-      {/* Layer B: Tight crisp contact ambient occlusion */}
-      <g ref={contactShadowGroupRef} filter="url(#ribbon-contact-shadow)" className="pointer-events-none">
-        <path ref={cShTopArmRef} fill="rgba(64, 42, 46, 0.17)" />
-        <path ref={cShBottomArmRef} fill="rgba(64, 42, 46, 0.17)" />
-        <path ref={cShLeftArmRef} fill="rgba(64, 42, 46, 0.17)" />
-        <path ref={cShRightArmRef} fill="rgba(64, 42, 46, 0.17)" />
-        <path ref={cShLTailRef} fill="rgba(64, 42, 46, 0.18)" />
-        <path ref={cShRTailRef} fill="rgba(64, 42, 46, 0.18)" />
-        <path ref={cShLooseRef} fill="rgba(64, 42, 46, 0.17)" />
-        <ellipse ref={cShKnotRef} cx={316} cy={150} rx={18} ry={15} fill="rgba(58, 32, 39, 0.34)" />
+      {/* Layer B: Crisp contact ambient occlusion */}
+      <g ref={contactShadowGroupRef} className="pointer-events-none">
+        <path ref={cShTopArmRef} fill="rgba(64, 42, 46, 0.13)" />
+        <path ref={cShBottomArmRef} fill="rgba(64, 42, 46, 0.13)" />
+        <path ref={cShLeftArmRef} fill="rgba(64, 42, 46, 0.13)" />
+        <path ref={cShRightArmRef} fill="rgba(64, 42, 46, 0.13)" />
+        <path ref={cShLTailRef} fill="rgba(64, 42, 46, 0.14)" />
+        <path ref={cShRTailRef} fill="rgba(64, 42, 46, 0.14)" />
+        <path ref={cShLooseRef} fill="rgba(64, 42, 46, 0.13)" />
+        <ellipse ref={cShKnotRef} cx={316} cy={150} rx={17} ry={14} fill="rgba(58, 32, 39, 0.28)" />
       </g>
 
       {/* Layer C: Main satin ribbon assembly */}
@@ -898,7 +983,10 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            style={{ pointerEvents: isLoosePhase && !openedArms.top ? 'auto' : 'none' }}
+            style={{
+              pointerEvents: isLoosePhase && !openedArms.top ? 'auto' : 'none',
+              touchAction: 'none',
+            }}
             className={isLoosePhase && !openedArms.top ? 'cursor-grab active:cursor-grabbing' : ''}
           >
             {renderSatinMeshLayers(topArmRef.current, 'url(#satin-band-v)')}
@@ -915,9 +1003,9 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
                   stroke="#C98297"
                   strokeWidth="1.2"
                   className="pointer-events-none opacity-65 motion-safe:animate-ping"
-                  style={{ animationDuration: '2.6s' }}
+                  style={{ transformBox: 'fill-box', transformOrigin: 'center', animationDuration: '2.6s' }}
                 />
-                <rect x={286} y={-24} width={60} height={155} rx={20} fill="transparent" />
+                <rect x={277} y={-28} width={78} height={162} rx={22} fill="transparent" />
               </>
             )}
           </g>
@@ -928,7 +1016,10 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            style={{ pointerEvents: isLoosePhase && !openedArms.bottom ? 'auto' : 'none' }}
+            style={{
+              pointerEvents: isLoosePhase && !openedArms.bottom ? 'auto' : 'none',
+              touchAction: 'none',
+            }}
             className={isLoosePhase && !openedArms.bottom ? 'cursor-grab active:cursor-grabbing' : ''}
           >
             {renderSatinMeshLayers(bottomArmRef.current, 'url(#satin-band-v)')}
@@ -945,9 +1036,9 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
                   stroke="#C98297"
                   strokeWidth="1.2"
                   className="pointer-events-none opacity-65 motion-safe:animate-ping"
-                  style={{ animationDuration: '2.6s' }}
+                  style={{ transformBox: 'fill-box', transformOrigin: 'center', animationDuration: '2.6s' }}
                 />
-                <rect x={286} y={168} width={60} height={155} rx={20} fill="transparent" />
+                <rect x={277} y={165} width={78} height={162} rx={22} fill="transparent" />
               </>
             )}
           </g>
@@ -958,7 +1049,10 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            style={{ pointerEvents: isLoosePhase && !openedArms.left ? 'auto' : 'none' }}
+            style={{
+              pointerEvents: isLoosePhase && !openedArms.left ? 'auto' : 'none',
+              touchAction: 'none',
+            }}
             className={isLoosePhase && !openedArms.left ? 'cursor-grab active:cursor-grabbing' : ''}
           >
             {renderSatinMeshLayers(leftArmRef.current, 'url(#satin-band-h)')}
@@ -975,9 +1069,9 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
                   stroke="#C98297"
                   strokeWidth="1.2"
                   className="pointer-events-none opacity-65 motion-safe:animate-ping"
-                  style={{ animationDuration: '2.6s' }}
+                  style={{ transformBox: 'fill-box', transformOrigin: 'center', animationDuration: '2.6s' }}
                 />
-                <rect x={-24} y={118} width={310} height={60} rx={20} fill="transparent" />
+                <rect x={-28} y={110} width={316} height={76} rx={22} fill="transparent" />
               </>
             )}
           </g>
@@ -988,7 +1082,10 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            style={{ pointerEvents: isLoosePhase && !openedArms.right ? 'auto' : 'none' }}
+            style={{
+              pointerEvents: isLoosePhase && !openedArms.right ? 'auto' : 'none',
+              touchAction: 'none',
+            }}
             className={isLoosePhase && !openedArms.right ? 'cursor-grab active:cursor-grabbing' : ''}
           >
             {renderSatinMeshLayers(rightArmRef.current, 'url(#satin-band-h)')}
@@ -1005,9 +1102,9 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
                   stroke="#C98297"
                   strokeWidth="1.2"
                   className="pointer-events-none opacity-65 motion-safe:animate-ping"
-                  style={{ animationDuration: '2.6s' }}
+                  style={{ transformBox: 'fill-box', transformOrigin: 'center', animationDuration: '2.6s' }}
                 />
-                <rect x={338} y={118} width={128} height={60} rx={20} fill="transparent" />
+                <rect x={335} y={110} width={136} height={76} rx={22} fill="transparent" />
               </>
             )}
           </g>
@@ -1021,8 +1118,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
           })}
           <path
             ref={lLoopCavernRef}
-            fill="rgba(78, 33, 47, 0.48)"
-            filter="url(#loop-cavern-blur)"
+            fill="rgba(78, 33, 47, 0.44)"
             className="pointer-events-none"
           />
         </g>
@@ -1033,8 +1129,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
           })}
           <path
             ref={rLoopCavernRef}
-            fill="rgba(78, 33, 47, 0.48)"
-            filter="url(#loop-cavern-blur)"
+            fill="rgba(78, 33, 47, 0.44)"
             className="pointer-events-none"
           />
         </g>
@@ -1046,21 +1141,24 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            style={{ pointerEvents: isUntiePhase ? 'auto' : 'none' }}
+            style={{ pointerEvents: isUntiePhase ? 'auto' : 'none', touchAction: 'none' }}
             className={isUntiePhase ? 'cursor-grab active:cursor-grabbing' : ''}
           >
             {renderSatinMeshLayers(lTailRef.current, 'url(#satin-pink-main)', {
               withPleats: true,
             })}
             {isUntiePhase && (
-              <circle
-                ref={leftHitRef}
-                cx={258}
-                cy={262}
-                r={36}
-                fill="transparent"
-                className="cursor-grab active:cursor-grabbing"
-              />
+              <>
+                <ellipse cx={268} cy={196} rx={42} ry={38} fill="transparent" />
+                <circle
+                  ref={leftHitRef}
+                  cx={258}
+                  cy={262}
+                  r={48}
+                  fill="transparent"
+                  className="cursor-grab active:cursor-grabbing"
+                />
+              </>
             )}
           </g>
 
@@ -1069,7 +1167,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            style={{ pointerEvents: isUntiePhase ? 'auto' : 'none' }}
+            style={{ pointerEvents: isUntiePhase ? 'auto' : 'none', touchAction: 'none' }}
             className={isUntiePhase ? 'cursor-grab active:cursor-grabbing' : ''}
           >
             {renderSatinMeshLayers(rTailRef.current, 'url(#satin-pink-main)', {
@@ -1085,18 +1183,21 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
                 stroke="#C98297"
                 strokeWidth="1.2"
                 className="pointer-events-none opacity-45 motion-safe:animate-ping"
-                style={{ animationDuration: '2.8s' }}
+                style={{ transformBox: 'fill-box', transformOrigin: 'center', animationDuration: '2.8s' }}
               />
             )}
             {isUntiePhase && (
-              <circle
-                ref={rightHitRef}
-                cx={376}
-                cy={256}
-                r={36}
-                fill="transparent"
-                className="cursor-grab active:cursor-grabbing"
-              />
+              <>
+                <ellipse cx={364} cy={196} rx={42} ry={38} fill="transparent" />
+                <circle
+                  ref={rightHitRef}
+                  cx={376}
+                  cy={256}
+                  r={48}
+                  fill="transparent"
+                  className="cursor-grab active:cursor-grabbing"
+                />
+              </>
             )}
           </g>
         </g>
@@ -1161,7 +1262,7 @@ export const SatinRibbon: React.FC<SatinRibbonProps> = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            style={{ pointerEvents: 'auto' }}
+            style={{ pointerEvents: 'auto', touchAction: 'none' }}
             className="cursor-grab active:cursor-grabbing"
           >
             <rect x={200} y={70} width={220} height={175} rx={36} fill="transparent" />
