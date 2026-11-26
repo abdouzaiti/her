@@ -3,14 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { LETTER_CONFIG } from './config/letterConfig';
 import { FlowerBouquetIntro } from './components/FlowerBouquetIntro';
 import { TelegramEnvelope } from './components/TelegramEnvelope';
 import { LetterSheet } from './components/LetterSheet';
 import { DeskPolaroids, MemoryLightbox } from './components/DeskMemories';
+import { FrenchChansonPlayer } from './utils/frenchChansonAudio';
 import type { TelegramPhase } from './types/telegram';
 
 function getInstructionCopy(
@@ -65,6 +66,10 @@ export default function App() {
   const [isCompactViewport, setIsCompactViewport] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < 640 : false
   );
+  const [isMuted, setIsMuted] = useState(false);
+  const audioPlayerRef = useRef<FrenchChansonPlayer | null>(null);
+  const isMutedRef = useRef(isMuted);
+  isMutedRef.current = isMuted;
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 639px)');
@@ -72,6 +77,44 @@ export default function App() {
     update();
     mq.addEventListener('change', update);
     return () => mq.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    const player = new FrenchChansonPlayer();
+    audioPlayerRef.current = player;
+
+    const unlockAndPlay = () => {
+      if (!isMutedRef.current) {
+        void player.start();
+      }
+    };
+
+    // Attempt gentle start immediately if permitted, and ensure start on first user gesture
+    void player.start();
+    window.addEventListener('pointerdown', unlockAndPlay, { passive: true, once: true });
+    window.addEventListener('keydown', unlockAndPlay, { passive: true, once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockAndPlay);
+      window.removeEventListener('keydown', unlockAndPlay);
+      player.dispose();
+      audioPlayerRef.current = null;
+    };
+  }, []);
+
+  const handleToggleMusic = useCallback(() => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      const player = audioPlayerRef.current;
+      if (player) {
+        if (!next) {
+          void player.start().then(() => player.setMuted(false));
+        } else {
+          void player.setMuted(true);
+        }
+      }
+      return next;
+    });
   }, []);
 
   const handleUntieStart = useCallback(() => {
@@ -133,6 +176,21 @@ export default function App() {
         }}
         aria-hidden="true"
       />
+
+      {/* Discreet background music toggle */}
+      <button
+        type="button"
+        onClick={handleToggleMusic}
+        aria-label={isMuted ? 'Activer la musique' : 'Couper la musique'}
+        title={isMuted ? 'Activer la musique' : 'Couper la musique'}
+        className="fixed top-4 right-4 sm:top-6 sm:right-6 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[#F7F0E6]/85 border border-[#B9A58F]/45 text-[#39302E]/75 hover:text-[#39302E] hover:border-[#C98297]/65 shadow-[0_4px_14px_rgba(57,48,46,0.08)] transition-colors duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C98297]"
+      >
+        {isMuted ? (
+          <VolumeX className="w-4 h-4 text-[#8A7562]" aria-hidden="true" />
+        ) : (
+          <Volume2 className="w-4 h-4 text-[#C98297]" aria-hidden="true" />
+        )}
+      </button>
 
       {/* Whispered French editorial instruction (telegram phases) */}
       <div className="pointer-events-none fixed top-7 sm:top-10 inset-x-0 z-50 flex flex-col items-center justify-center px-6 text-center">
