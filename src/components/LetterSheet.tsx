@@ -112,12 +112,12 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, on
       initial={{ opacity: 0, scale: 0.86, y: 36 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-      className="relative z-40 w-[min(94vw,580px)] max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y select-text"
+      className="no-scrollbar relative z-40 w-[min(94vw,580px)] max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y select-text"
       style={{ perspective: '1600px' }}
     >
       <div
         dir="rtl"
-        className="relative mx-auto my-2 flex flex-col text-right rounded-[3px] shadow-[0_24px_60px_-15px_rgba(57,48,46,0.28),0_4px_16px_rgba(57,48,46,0.08)]"
+        className="relative mx-auto my-2 flex flex-col text-right rounded-[4px] shadow-[0_26px_64px_-14px_rgba(52,36,20,0.38),0_6px_18px_rgba(68,48,28,0.16)]"
       >
         {/* TOP FOLD PANEL */}
         <motion.div
@@ -127,13 +127,13 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, on
           style={{
             transformOrigin: 'bottom center',
             transformStyle: 'preserve-3d',
-            backgroundImage: PAPER_GRAIN_SVG,
+            backgroundImage: `${PAPER_GRAIN_SVG}, radial-gradient(ellipse at 12% 10%, rgba(164, 122, 72, 0.22) 0%, transparent 45%), radial-gradient(ellipse at 90% 15%, rgba(148, 108, 60, 0.16) 0%, transparent 42%)`,
           }}
-          className="relative z-10 bg-[#F7F0E6]/62 rounded-t-[3px] border border-b-0 border-[#DFD2C0] px-7 pt-7 pb-3 sm:px-12 sm:pt-10 sm:pb-3.5"
+          className="relative z-10 bg-[#EFE1C6]/66 rounded-t-[4px] border border-b-0 border-[#C6AF8D] px-7 pt-7 pb-3 sm:px-12 sm:pt-10 sm:pb-3.5 shadow-[inset_0_16px_30px_-14px_rgba(116,80,40,0.28)]"
         >
           <div
             style={{ backfaceVisibility: 'hidden', transform: 'rotateX(180deg)' }}
-            className="pointer-events-none absolute inset-0 rounded-t-[3px] bg-[#EFE5D6] border border-[#DFD2C0]"
+            className="pointer-events-none absolute inset-0 rounded-t-[4px] bg-[#E5D3B3] border border-[#C6AF8D]"
           />
 
           {/* Subtle archival header */}
@@ -142,7 +142,7 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, on
             initial={{ opacity: 0 }}
             animate={{ opacity: inkVisible ? 1 : 0 }}
             transition={{ duration: 0.7, delay: 0.1 }}
-            className="flex items-baseline justify-between border-b border-[#B9A58F]/25 pb-2.5 mb-4 text-[11px] sm:text-xs tracking-[0.18em] uppercase text-[#8A7562] font-editorial"
+            className="flex items-baseline justify-between border-b border-[#9A7B56]/35 pb-2.5 mb-4 text-[11px] sm:text-xs tracking-[0.18em] uppercase text-[#755A3E] font-editorial"
           >
             <span>PAPSI</span>
             <span>TO MY KRYPTONYTE</span>
@@ -156,7 +156,7 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, on
               clipPath: inkVisible ? 'inset(0 0 0 0%)' : 'inset(0 0 0 100%)',
             }}
             transition={{ duration: 1.0, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="font-arabic text-[1.16rem] sm:text-[1.35rem] leading-[2.05] text-[#39302E]/95"
+            className="font-arabic text-[1.16rem] sm:text-[1.35rem] leading-[2.05] text-[#35261D]"
           >
             {config.recipientLine}
           </motion.p>
@@ -177,7 +177,7 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, on
                     delay: 0.45 + idx * 0.28,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className={`font-arabic text-[1.16rem] sm:text-[1.35rem] leading-[2.05] text-[#39302E]/95 ${
+                  className={`font-arabic text-[1.16rem] sm:text-[1.35rem] leading-[2.05] text-[#35261D] ${
                     endsBayt ? 'mb-5' : ''
                   }`}
                 >
@@ -187,13 +187,15 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, on
             })}
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-b from-transparent via-[#B9A58F]/20 to-[#FFFFFF]/45" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[4px] bg-gradient-to-b from-transparent via-[#9B7A50]/28 to-[#FFF8EA]/35" />
         </motion.div>
 
         {/* MIDDLE PANEL */}
         <div
-          style={{ backgroundImage: PAPER_GRAIN_SVG }}
-          className="relative z-10 bg-[#F7F0E6]/62 border-x border-[#DFD2C0] px-7 pt-2.5 pb-3 sm:px-12 sm:pt-3 sm:pb-3.5"
+          style={{
+            backgroundImage: `${PAPER_GRAIN_SVG}, radial-gradient(ellipse at 92% 52%, rgba(162, 120, 70, 0.14) 0%, transparent 45%)`,
+          }}
+          className="relative z-10 bg-[#ECE0C4]/66 border-x border-[#C6AF8D] px-7 pt-2.5 pb-3 sm:px-12 sm:pt-3 sm:pb-3.5"
         >
           <div className="space-y-0.5">
             {midLines.map((line, idx) => {
@@ -211,7 +213,7 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, on
                     delay: 1.25 + idx * 0.28,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className={`font-arabic text-[1.16rem] sm:text-[1.35rem] leading-[2.05] text-[#39302E]/95 ${
+                  className={`font-arabic text-[1.16rem] sm:text-[1.35rem] leading-[2.05] text-[#35261D] ${
                     endsBayt ? 'mb-5' : ''
                   }`}
                 >
@@ -221,7 +223,7 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, on
             })}
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-b from-transparent via-[#B9A58F]/20 to-[#FFFFFF]/45" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[4px] bg-gradient-to-b from-transparent via-[#9B7A50]/28 to-[#FFF8EA]/35" />
         </div>
 
         {/* BOTTOM FOLD PANEL */}
@@ -232,13 +234,13 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, on
           style={{
             transformOrigin: 'top center',
             transformStyle: 'preserve-3d',
-            backgroundImage: PAPER_GRAIN_SVG,
+            backgroundImage: `${PAPER_GRAIN_SVG}, radial-gradient(ellipse at 14% 88%, rgba(154, 114, 64, 0.2) 0%, transparent 48%), radial-gradient(ellipse at 86% 84%, rgba(144, 102, 54, 0.18) 0%, transparent 45%)`,
           }}
-          className="relative z-10 bg-[#F7F0E6]/62 rounded-b-[3px] border border-t-0 border-[#DFD2C0] px-7 pt-2.5 pb-8 sm:px-12 sm:pt-3 sm:pb-10"
+          className="relative z-10 bg-[#EAE0C3]/66 rounded-b-[4px] border border-t-0 border-[#C6AF8D] px-7 pt-2.5 pb-8 sm:px-12 sm:pt-3 sm:pb-10 shadow-[inset_0_-18px_32px_-14px_rgba(116,80,40,0.3)]"
         >
           <div
             style={{ backfaceVisibility: 'hidden', transform: 'rotateX(180deg)' }}
-            className="pointer-events-none absolute inset-0 rounded-b-[3px] bg-[#ECE1D1] border border-[#DFD2C0]"
+            className="pointer-events-none absolute inset-0 rounded-b-[4px] bg-[#E2CFAF] border border-[#C6AF8D]"
           />
 
           <div className="space-y-0.5">
@@ -257,7 +259,7 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, on
                     delay: 2.55 + idx * 0.28,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className={`font-arabic text-[1.16rem] sm:text-[1.35rem] leading-[2.05] text-[#39302E]/95 ${
+                  className={`font-arabic text-[1.16rem] sm:text-[1.35rem] leading-[2.05] text-[#35261D] ${
                     endsBayt ? 'mb-5' : ''
                   }`}
                 >
@@ -422,27 +424,38 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, on
           </motion.div>
         </motion.div>
 
-        {/* Soft-focus ("flou") portrait background woven beneath the ivory letter paper */}
+        {/* Soft-focus ("flou") portrait background woven beneath the antique parchment paper */}
         <motion.div
           aria-hidden="true"
           initial={{ opacity: 0 }}
           animate={{ opacity: bottomOpen ? 1 : 0 }}
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[3px] bg-[#F7F0E6]"
+          className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[4px] bg-[#EBDCB9]"
         >
           <img
             src="/letter.png"
             alt=""
-            className="h-full w-full object-cover object-[50%_12%] blur-[3.5px] sm:blur-[4px] scale-[1.01] opacity-80"
+            className="h-full w-full object-cover object-[50%_12%] blur-[3.5px] sm:blur-[4px] scale-[1.01] opacity-75 sepia-[0.22]"
           />
           <div
             className="absolute inset-0"
             style={{
               background:
-                'radial-gradient(ellipse at 50% 40%, rgba(247, 240, 230, 0.08) 0%, rgba(247, 240, 230, 0.42) 100%)',
+                'radial-gradient(ellipse at 50% 45%, rgba(239, 225, 198, 0.08) 0%, rgba(182, 142, 88, 0.36) 100%)',
+              boxShadow: 'inset 0 0 38px rgba(110, 74, 34, 0.26)',
             }}
           />
         </motion.div>
+
+        {/* Continuous aged parchment edge patina & antique border wear overlay */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-20 rounded-[4px]"
+          style={{
+            boxShadow:
+              'inset 0 0 34px rgba(126, 88, 44, 0.24), inset 0 0 10px rgba(96, 64, 28, 0.16)',
+          }}
+        />
       </div>
 
       {onSelectPhoto && (

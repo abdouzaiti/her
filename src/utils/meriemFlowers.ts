@@ -4,7 +4,7 @@ export interface FlowerNode {
   id: number;
   lineIndex: 0 | 1 | 2;
   variety: FlowerVariety;
-  /** Position when spelling MERIEM / MY / KRYPTONITE (inside 900x460 viewBox) */
+  /** Position when spelling MERIEM / MY / KRYPTONITE (inside 900x480 viewBox) */
   nameX: number;
   nameY: number;
   nameScale: number;
@@ -14,7 +14,7 @@ export interface FlowerNode {
   bouquetY: number;
   bouquetScale: number;
   bouquetRot: number;
-  /** Slight curve for each flower's green stem */
+  /** Delicate green stem curve & compact length so letters stay crystal clear */
   stemCurve: number;
   stemLen: number;
   leafSide: -1 | 1;
@@ -52,7 +52,7 @@ function addLetterPoints(
   w: number,
   h: number
 ): Array<{ x: number; y: number }> {
-  const midY = oy + h * 0.48;
+  const midY = oy + h * 0.49;
   const botY = oy + h;
   const cx = ox + w * 0.5;
   const rx = ox + w;
@@ -60,72 +60,72 @@ function addLetterPoints(
   switch (letter) {
     case 'M':
       return [
-        ...sampleSegment(ox, botY, ox, oy, 5),
-        ...sampleSegment(ox, oy, cx, oy + h * 0.56, 3, true),
-        ...sampleSegment(cx, oy + h * 0.56, rx, oy, 3, true),
-        ...sampleSegment(rx, oy, rx, botY, 5, true),
+        ...sampleSegment(ox, botY, ox, oy, 6),
+        ...sampleSegment(ox, oy, cx, oy + h * 0.54, 4, true),
+        ...sampleSegment(cx, oy + h * 0.54, rx, oy, 4, true),
+        ...sampleSegment(rx, oy, rx, botY, 6, true),
       ];
     case 'E':
       return [
-        ...sampleSegment(ox, oy, ox, botY, 5),
-        ...sampleSegment(ox, oy, rx, oy, 3, true),
-        ...sampleSegment(ox, midY, ox + w * 0.78, midY, 3, true),
-        ...sampleSegment(ox, botY, rx, botY, 3, true),
+        ...sampleSegment(ox, oy, ox, botY, 6),
+        ...sampleSegment(ox, oy, rx, oy, 4, true),
+        ...sampleSegment(ox, midY, ox + w * 0.8, midY, 4, true),
+        ...sampleSegment(ox, botY, rx, botY, 4, true),
       ];
     case 'R':
       return [
-        ...sampleSegment(ox, oy, ox, botY, 5),
-        ...sampleSegment(ox, oy, ox + w * 0.72, oy, 3, true),
-        ...sampleSegment(ox + w * 0.72, oy, rx, oy + h * 0.24, 2, true),
-        ...sampleSegment(rx, oy + h * 0.24, ox + w * 0.72, midY, 2, true),
-        ...sampleSegment(ox + w * 0.72, midY, ox, midY, 3, true),
-        ...sampleSegment(ox + w * 0.48, midY + 12, rx, botY, 3),
+        ...sampleSegment(ox, oy, ox, botY, 6),
+        ...sampleSegment(ox, oy, ox + w * 0.72, oy, 4, true),
+        ...sampleSegment(ox + w * 0.72, oy, rx, oy + h * 0.24, 3, true),
+        ...sampleSegment(rx, oy + h * 0.24, ox + w * 0.72, midY, 3, true),
+        ...sampleSegment(ox + w * 0.72, midY, ox, midY, 4, true),
+        ...sampleSegment(ox + w * 0.44, midY + 11, rx, botY, 4),
       ];
     case 'I':
       return [
-        ...sampleSegment(cx, oy, cx, botY, 5),
+        ...sampleSegment(cx, oy, cx, botY, 6),
       ];
     case 'Y':
       return [
-        ...sampleSegment(ox, oy, cx, midY, 3),
-        ...sampleSegment(rx, oy, cx, midY, 3),
-        ...sampleSegment(cx, midY, cx, botY, 3, true),
+        ...sampleSegment(ox, oy, cx, midY, 4),
+        ...sampleSegment(rx, oy, cx, midY, 4),
+        ...sampleSegment(cx, midY, cx, botY, 4, true),
       ];
     case 'K':
       return [
-        ...sampleSegment(ox, oy, ox, botY, 5),
-        ...sampleSegment(ox + 14, midY - 4, rx, oy, 3),
-        ...sampleSegment(ox + 14, midY + 6, rx, botY, 3),
+        ...sampleSegment(ox, oy, ox, botY, 6),
+        ...sampleSegment(ox + 12, midY - 4, rx, oy, 4),
+        ...sampleSegment(ox + 12, midY + 6, rx, botY, 4),
       ];
     case 'P':
       return [
-        ...sampleSegment(ox, oy, ox, botY, 5),
-        ...sampleSegment(ox, oy, ox + w * 0.72, oy, 3, true),
-        ...sampleSegment(ox + w * 0.72, oy, rx, oy + h * 0.24, 2, true),
-        ...sampleSegment(rx, oy + h * 0.24, ox + w * 0.72, midY, 2, true),
-        ...sampleSegment(ox + w * 0.72, midY, ox, midY, 3, true),
+        ...sampleSegment(ox, oy, ox, botY, 6),
+        ...sampleSegment(ox, oy, ox + w * 0.72, oy, 4, true),
+        ...sampleSegment(ox + w * 0.72, oy, rx, oy + h * 0.24, 3, true),
+        ...sampleSegment(rx, oy + h * 0.24, ox + w * 0.72, midY, 3, true),
+        ...sampleSegment(ox + w * 0.72, midY, ox, midY, 4, true),
       ];
     case 'T':
       return [
-        ...sampleSegment(ox, oy, rx, oy, 3),
-        ...sampleSegment(cx, oy, cx, botY, 5, true),
+        ...sampleSegment(ox, oy, rx, oy, 4),
+        ...sampleSegment(cx, oy, cx, botY, 6, true),
       ];
     case 'O':
       return [
-        ...sampleSegment(ox + w * 0.26, oy, ox + w * 0.74, oy, 3),
-        ...sampleSegment(ox + w * 0.74, oy, rx, oy + h * 0.28, 2, true),
-        ...sampleSegment(rx, oy + h * 0.28, rx, oy + h * 0.72, 3, true),
-        ...sampleSegment(rx, oy + h * 0.72, ox + w * 0.74, botY, 2, true),
-        ...sampleSegment(ox + w * 0.74, botY, ox + w * 0.26, botY, 3, true),
-        ...sampleSegment(ox + w * 0.26, botY, ox, oy + h * 0.72, 2, true),
-        ...sampleSegment(ox, oy + h * 0.72, ox, oy + h * 0.28, 3, true),
-        ...sampleSegment(ox, oy + h * 0.28, ox + w * 0.26, oy, 2, true),
+        ...sampleSegment(ox + w * 0.28, oy, ox + w * 0.72, oy, 3),
+        ...sampleSegment(ox + w * 0.72, oy, rx, oy + h * 0.24, 2, true),
+        ...sampleSegment(rx, oy + h * 0.24, rx, oy + h * 0.76, 4, true),
+        ...sampleSegment(rx, oy + h * 0.76, ox + w * 0.72, botY, 2, true),
+        ...sampleSegment(ox + w * 0.72, botY, ox + w * 0.28, botY, 3, true),
+        ...sampleSegment(ox + w * 0.28, botY, ox, oy + h * 0.76, 2, true),
+        ...sampleSegment(ox, oy + h * 0.76, ox, oy + h * 0.24, 4, true),
+        ...sampleSegment(ox, oy + h * 0.24, ox + w * 0.28, oy, 2, true),
       ];
     case 'N':
       return [
-        ...sampleSegment(ox, botY, ox, oy, 5),
-        ...sampleSegment(ox, oy, rx, botY, 4, true),
-        ...sampleSegment(rx, botY, rx, oy, 5, true),
+        ...sampleSegment(ox, botY, ox, oy, 6),
+        ...sampleSegment(ox, oy, rx, botY, 5, true),
+        ...sampleSegment(rx, botY, rx, oy, 6, true),
       ];
     default:
       return [];
@@ -141,15 +141,15 @@ function buildWordLine(
   minSpacing: number
 ): Array<{ x: number; y: number }> {
   const widths: Record<string, number> = {
-    M: 82,
-    E: 58,
-    R: 64,
+    M: 80,
+    E: 56,
+    R: 62,
     I: 22,
-    Y: 64,
-    K: 58,
+    Y: 62,
+    K: 56,
     P: 56,
-    T: 60,
-    O: 66,
+    T: 58,
+    O: 64,
     N: 60,
   };
 
@@ -181,7 +181,7 @@ function buildWordLine(
 }
 
 /**
- * Generate flowers with green stems forming:
+ * Generate crisp, legible flowers with delicate green stems forming:
  *   MERIEM
  *     MY
  * KRYPTONITE
@@ -190,15 +190,15 @@ function buildWordLine(
 export function buildMeriemFlowers(): FlowerNode[] {
   const centerX = 450;
 
-  const line1 = buildWordLine('MERIEM', 24, 104, 38, centerX, 16).map((pt) => ({
+  const line1 = buildWordLine('MERIEM', 24, 106, 40, centerX, 15).map((pt) => ({
     ...pt,
     lineIndex: 0 as const,
   }));
-  const line2 = buildWordLine('MY', 170, 98, 42, centerX, 16).map((pt) => ({
+  const line2 = buildWordLine('MY', 174, 96, 44, centerX, 15).map((pt) => ({
     ...pt,
     lineIndex: 1 as const,
   }));
-  const line3 = buildWordLine('KRYPTONITE', 310, 104, 28, centerX, 15).map((pt) => ({
+  const line3 = buildWordLine('KRYPTONITE', 316, 104, 29, centerX, 14.5).map((pt) => ({
     ...pt,
     lineIndex: 2 as const,
   }));
@@ -228,23 +228,20 @@ export function buildMeriemFlowers(): FlowerNode[] {
     // Tilt stems naturally inward toward the bouquet tie point
     const radialTilt = ((bx - bouquetCx) / 165) * 28;
 
-    const jitterX = (seeded(i, 1) - 0.5) * 2.6;
-    const jitterY = (seeded(i, 2) - 0.5) * 2.6;
-
     return {
       id: i,
       lineIndex: pt.lineIndex,
       variety: varieties[i % varieties.length],
-      nameX: pt.x + jitterX,
-      nameY: pt.y + jitterY,
-      nameScale: 0.68 + seeded(i, 3) * 0.16,
-      nameRot: (seeded(i, 4) - 0.5) * 14,
+      nameX: pt.x,
+      nameY: pt.y,
+      nameScale: 0.45 + seeded(i, 3) * 0.08,
+      nameRot: (seeded(i, 4) - 0.5) * 8,
       bouquetX: bx,
       bouquetY: by,
-      bouquetScale: 1.02 + (1 - normR * 0.5) * 0.52 + seeded(i, 5) * 0.16,
+      bouquetScale: 1.04 + (1 - normR * 0.5) * 0.52 + seeded(i, 5) * 0.16,
       bouquetRot: radialTilt + (seeded(i, 6) - 0.5) * 16,
-      stemCurve: (seeded(i, 7) - 0.5) * 8,
-      stemLen: 26 + seeded(i, 8) * 10,
+      stemCurve: (seeded(i, 7) - 0.5) * 5,
+      stemLen: 12 + seeded(i, 8) * 5,
       leafSide: i % 2 === 0 ? -1 : 1,
       tone: (i % 4) as 0 | 1 | 2 | 3,
     };

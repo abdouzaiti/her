@@ -11,10 +11,10 @@ interface FlowerBouquetIntroProps {
 type IntroStage = 'blooming' | 'bouquet' | 'ready';
 
 const TONES = [
-  { outer: '#F8DFE6', mid: '#E8A6B7', inner: '#C98297', heart: '#9E586E' },
-  { outer: '#FCF4ED', mid: '#F2CAD5', inner: '#DC95AA', heart: '#B36B81' },
-  { outer: '#F4CBD6', mid: '#DF95AA', inner: '#BE748A', heart: '#8E4B60' },
-  { outer: '#FAF1EB', mid: '#ECC0CC', inner: '#D48AA0', heart: '#A85F75' },
+  { outer: '#F3B8C8', mid: '#DF7D99', inner: '#B85472', heart: '#86324C' },
+  { outer: '#F7CDD8', mid: '#E891A9', inner: '#C4637F', heart: '#8F3B54' },
+  { outer: '#ECA2B7', mid: '#D46D8B', inner: '#AD4866', heart: '#7A2942' },
+  { outer: '#F5C1CF', mid: '#E2849E', inner: '#BC5B77', heart: '#89364E' },
 ] as const;
 
 const BotanicalBloom: React.FC<{ flower: FlowerNode }> = ({ flower }) => {
@@ -115,7 +115,7 @@ const BotanicalBloom: React.FC<{ flower: FlowerNode }> = ({ flower }) => {
 
       {flower.variety === 'ranunculus' && (
         <g>
-          <circle cx="0" cy="0" r="13.5" fill={palette.outer} />
+          <circle cx="0" cy="0" r="13.5" fill={palette.outer} stroke={palette.inner} strokeWidth="0.4" strokeOpacity="0.45" />
           {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
             <ellipse
               key={deg}
@@ -141,8 +141,9 @@ const BotanicalBloom: React.FC<{ flower: FlowerNode }> = ({ flower }) => {
               d="M 0,-1 C -5,-6 -5,-13.5 0,-14.5 C 5,-13.5 5,-6 0,-1 Z"
               transform={`rotate(${deg})`}
               fill={palette.outer}
-              stroke={palette.mid}
+              stroke={palette.inner}
               strokeWidth="0.45"
+              strokeOpacity="0.5"
             />
           ))}
           <circle cx="0" cy="0" r="3.2" fill={palette.inner} />
@@ -161,14 +162,14 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
   const [stage, setStage] = useState<IntroStage>('blooming');
 
   useEffect(() => {
-    const bloomTotalMs = flowers.length * 13 + 1100;
+    const bloomTotalMs = flowers.length * 10 + 1650;
     const tBouquet = window.setTimeout(() => {
       setStage('bouquet');
     }, bloomTotalMs);
 
     const tReady = window.setTimeout(() => {
       setStage('ready');
-    }, bloomTotalMs + 1350);
+    }, bloomTotalMs + 1500);
 
     return () => {
       window.clearTimeout(tBouquet);
@@ -210,9 +211,6 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
           aria-label={`Fleurs avec leurs tiges vertes composant ${recipientName} My Kryptonite puis réunies en bouquet`}
         >
           <defs>
-            <filter id="flower-shadow" x="-30%" y="-30%" width="160%" height="160%">
-              <feDropShadow dx="1.4" dy="2.8" stdDeviation="2.2" floodColor="#39302E" floodOpacity="0.16" />
-            </filter>
             <linearGradient id="bouquet-paper-front" x1="20%" y1="0%" x2="80%" y2="100%">
               <stop offset="0%" stopColor="#FAF4EB" />
               <stop offset="55%" stopColor="#F4E9DA" />
@@ -236,19 +234,13 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
               opacity: isBouquet ? 1 : 0,
               scale: isBouquet ? 1 : 0.72,
             }}
-            transition={{ duration: 0.85, delay: isBouquet ? 0.25 : 0, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.9, delay: isBouquet ? 0.25 : 0, ease: [0.22, 1, 0.36, 1] }}
             style={{ transformOrigin: '450px 248px' }}
           >
             <g transform="translate(450, 248) scale(1.32) translate(-450, -248)">
-              {/* Soft desk shadow beneath bouquet */}
-              <ellipse
-                cx="452"
-                cy="288"
-                rx="82"
-                ry="92"
-                fill="rgba(57, 48, 46, 0.1)"
-                filter="url(#flower-shadow)"
-              />
+              {/* Soft GPU-friendly layered desk shadow beneath bouquet */}
+              <ellipse cx="452" cy="288" rx="92" ry="102" fill="rgba(57, 48, 46, 0.045)" />
+              <ellipse cx="452" cy="288" rx="76" ry="86" fill="rgba(57, 48, 46, 0.065)" />
               {/* Back paper cone */}
               <path
                 d="M 322,162 L 450,104 L 578,162 L 494,344 Q 450,382 406,344 Z"
@@ -279,8 +271,8 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
             </g>
           </motion.g>
 
-          {/* All individual flowers with green stems: bloom 1-by-1 forming MERIEM / MY / KRYPTONITE, then gather into bouquet */}
-          <g filter="url(#flower-shadow)">
+          {/* All individual flowers with green stems: bloom 1-by-1 forming MERIEM / MY / KRYPTONITE, then gather smoothly into bouquet */}
+          <g>
             {flowers.map((flower, idx) => (
               <motion.g
                 key={flower.id}
@@ -288,7 +280,7 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
                   x: flower.nameX,
                   y: flower.nameY,
                   scale: 0,
-                  rotate: flower.nameRot - 18,
+                  rotate: flower.nameRot - 14,
                   opacity: 0,
                 }}
                 animate={
@@ -311,13 +303,13 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
                 transition={
                   isBouquet
                     ? {
-                        duration: 1.15,
-                        delay: (flowers.length - idx) * 0.004,
-                        ease: [0.22, 1, 0.36, 1],
+                        duration: 1.4,
+                        delay: (flowers.length - idx) * 0.0025,
+                        ease: [0.19, 1, 0.22, 1],
                       }
                     : {
-                        duration: 0.48,
-                        delay: idx * 0.013,
+                        duration: 0.45,
+                        delay: idx * 0.01,
                         ease: [0.16, 1, 0.3, 1],
                       }
                 }
