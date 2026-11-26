@@ -10,6 +10,7 @@ import { LETTER_CONFIG } from './config/letterConfig';
 import { FlowerBouquetIntro } from './components/FlowerBouquetIntro';
 import { TelegramEnvelope } from './components/TelegramEnvelope';
 import { LetterSheet } from './components/LetterSheet';
+import { DeskPolaroids, MemoryLightbox } from './components/DeskMemories';
 import type { TelegramPhase } from './types/telegram';
 
 function getInstructionCopy(
@@ -60,6 +61,7 @@ export default function App() {
   const [phase, setPhase] = useState<TelegramPhase>('CLOSED_WITH_RIBBON');
   const [openedSidesCount, setOpenedSidesCount] = useState(0);
   const [resetKey, setResetKey] = useState(0);
+  const [activeMemoryIndex, setActiveMemoryIndex] = useState<number | null>(null);
   const [isCompactViewport, setIsCompactViewport] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < 640 : false
   );
@@ -114,6 +116,7 @@ export default function App() {
     setShowIntro(true);
     setPhase('CLOSED_WITH_RIBBON');
     setOpenedSidesCount(0);
+    setActiveMemoryIndex(null);
     setResetKey((k) => k + 1);
   }, []);
 
@@ -191,13 +194,30 @@ export default function App() {
             {phase === 'LETTER_UNFOLDED' && (
               <div className="fixed inset-0 z-40 flex items-center justify-center px-4 py-14 sm:py-16 pointer-events-none">
                 <div className="pointer-events-auto">
-                  <LetterSheet config={LETTER_CONFIG} isUnfolded={true} />
+                  <LetterSheet
+                    config={LETTER_CONFIG}
+                    isUnfolded={true}
+                    onSelectPhoto={setActiveMemoryIndex}
+                  />
                 </div>
               </div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Vintage Polaroid keepsakes resting around the telegram on the desk */}
+      <DeskPolaroids
+        visible={!showIntro && phase !== 'LETTER_UNFOLDED'}
+        onSelectPhoto={setActiveMemoryIndex}
+      />
+
+      {/* Interactive Polaroid memory inspection lightbox */}
+      <MemoryLightbox
+        activeIndex={activeMemoryIndex}
+        onClose={() => setActiveMemoryIndex(null)}
+        onChangeIndex={setActiveMemoryIndex}
+      />
 
       {/* Discreet Reset / Replay button */}
       <AnimatePresence>

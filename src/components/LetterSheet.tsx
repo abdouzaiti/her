@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import type { LetterConfig } from '../types/telegram';
+import { LetterMemoriesFan } from './DeskMemories';
 
 interface LetterSheetProps {
   config: LetterConfig;
   isUnfolded: boolean;
+  onSelectPhoto?: (index: number) => void;
 }
 
 const PAPER_GRAIN_SVG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E")`;
 
-export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded }) => {
+export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded, onSelectPhoto }) => {
   const [unfoldStage, setUnfoldStage] = useState<'folded' | 'opening-top' | 'opening-bottom' | 'writing'>('folded');
   const [isAtBottom, setIsAtBottom] = useState(false);
   const [romanticWriteStarted, setRomanticWriteStarted] = useState(false);
@@ -89,12 +91,12 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded }) 
     };
   }, [inkVisible]);
 
-  // Start the live-writing animation after standing at the bottom for 3 seconds
+  // Start the live-writing animation after standing at the bottom for 1.5 seconds
   useEffect(() => {
     if (!inkVisible || !isAtBottom || romanticWriteStarted) return;
     const timer = window.setTimeout(() => {
       setRomanticWriteStarted(true);
-    }, 3000);
+    }, 1500);
     return () => window.clearTimeout(timer);
   }, [inkVisible, isAtBottom, romanticWriteStarted]);
 
@@ -115,7 +117,7 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded }) 
     >
       <div
         dir="rtl"
-        className="relative mx-auto my-2 flex flex-col text-right shadow-[0_24px_60px_-15px_rgba(57,48,46,0.28),0_4px_16px_rgba(57,48,46,0.08)]"
+        className="relative mx-auto my-2 flex flex-col text-right rounded-[3px] shadow-[0_24px_60px_-15px_rgba(57,48,46,0.28),0_4px_16px_rgba(57,48,46,0.08)]"
       >
         {/* TOP FOLD PANEL */}
         <motion.div
@@ -127,7 +129,7 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded }) 
             transformStyle: 'preserve-3d',
             backgroundImage: PAPER_GRAIN_SVG,
           }}
-          className="relative paper-surface rounded-t-[3px] border border-b-0 border-[#DFD2C0] px-7 pt-7 pb-3 sm:px-12 sm:pt-10 sm:pb-3.5"
+          className="relative z-10 bg-[#F7F0E6]/62 rounded-t-[3px] border border-b-0 border-[#DFD2C0] px-7 pt-7 pb-3 sm:px-12 sm:pt-10 sm:pb-3.5"
         >
           <div
             style={{ backfaceVisibility: 'hidden', transform: 'rotateX(180deg)' }}
@@ -191,7 +193,7 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded }) 
         {/* MIDDLE PANEL */}
         <div
           style={{ backgroundImage: PAPER_GRAIN_SVG }}
-          className="relative paper-surface border-x border-[#DFD2C0] px-7 pt-2.5 pb-3 sm:px-12 sm:pt-3 sm:pb-3.5"
+          className="relative z-10 bg-[#F7F0E6]/62 border-x border-[#DFD2C0] px-7 pt-2.5 pb-3 sm:px-12 sm:pt-3 sm:pb-3.5"
         >
           <div className="space-y-0.5">
             {midLines.map((line, idx) => {
@@ -232,7 +234,7 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded }) 
             transformStyle: 'preserve-3d',
             backgroundImage: PAPER_GRAIN_SVG,
           }}
-          className="relative paper-surface rounded-b-[3px] border border-t-0 border-[#DFD2C0] px-7 pt-2.5 pb-8 sm:px-12 sm:pt-3 sm:pb-10"
+          className="relative z-10 bg-[#F7F0E6]/62 rounded-b-[3px] border border-t-0 border-[#DFD2C0] px-7 pt-2.5 pb-8 sm:px-12 sm:pt-3 sm:pb-10"
         >
           <div
             style={{ backfaceVisibility: 'hidden', transform: 'rotateX(180deg)' }}
@@ -419,7 +421,33 @@ export const LetterSheet: React.FC<LetterSheetProps> = ({ config, isUnfolded }) 
             </div>
           </motion.div>
         </motion.div>
+
+        {/* Soft-focus ("flou") portrait background woven beneath the ivory letter paper */}
+        <motion.div
+          aria-hidden="true"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: bottomOpen ? 1 : 0 }}
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[3px] bg-[#F7F0E6]"
+        >
+          <img
+            src="/letter.png"
+            alt=""
+            className="h-full w-full object-cover object-[50%_12%] blur-[3.5px] sm:blur-[4px] scale-[1.01] opacity-80"
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(ellipse at 50% 40%, rgba(247, 240, 230, 0.08) 0%, rgba(247, 240, 230, 0.42) 100%)',
+            }}
+          />
+        </motion.div>
       </div>
+
+      {onSelectPhoto && (
+        <LetterMemoriesFan visible={romanticWriteStarted} onSelectPhoto={onSelectPhoto} />
+      )}
     </motion.div>
   );
 };
