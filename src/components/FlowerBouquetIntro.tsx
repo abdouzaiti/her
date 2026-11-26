@@ -158,11 +158,14 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
   recipientName,
   onContinue,
 }) => {
-  const { flowers, vinePaths } = useMemo(() => buildMeriemFlowers(), []);
+  const { flowers, vinePaths, heartOutlinePath, heartCenter, heartCompleteDelayMs } = useMemo(
+    () => buildMeriemFlowers(),
+    []
+  );
   const [stage, setStage] = useState<IntroStage>('blooming');
 
   useEffect(() => {
-    const bloomTotalMs = flowers.length * 10 + 1650;
+    const bloomTotalMs = heartCompleteDelayMs + 1250;
     const tBouquet = window.setTimeout(() => {
       setStage('bouquet');
     }, bloomTotalMs);
@@ -175,7 +178,7 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
       window.clearTimeout(tBouquet);
       window.clearTimeout(tReady);
     };
-  }, [flowers.length]);
+  }, [heartCompleteDelayMs]);
 
   const isBouquet = stage === 'bouquet' || stage === 'ready';
 
@@ -188,7 +191,7 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
       className="relative z-20 flex flex-col items-center justify-center w-full max-w-6xl px-2 sm:px-6 select-none"
     >
       {/* Whispered floral prelude caption */}
-      <div className="mb-1 sm:mb-3 min-h-[2.8rem] flex flex-col items-center justify-center text-center">
+      <div className="mb-1 sm:mb-2 min-h-[2.6rem] flex flex-col items-center justify-center text-center">
         <motion.p
           key={isBouquet ? 'bouquet-title' : 'name-title'}
           initial={{ opacity: 0, y: -4 }}
@@ -203,12 +206,12 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
       </div>
 
       {/* Main Botanical Stage SVG */}
-      <div className="w-full max-w-[1060px]">
+      <div className="w-full max-w-[1040px]">
         <svg
-          viewBox="0 0 900 480"
-          className="w-full h-auto max-h-[74dvh] overflow-visible"
+          viewBox="0 0 900 660"
+          className="w-full h-auto max-h-[75dvh] overflow-visible"
           role="img"
-          aria-label={`Fleurs avec leurs tiges vertes composant ${recipientName} My Kryptonite puis réunies en bouquet`}
+          aria-label={`Fleurs avec leurs tiges vertes composant ${recipientName} My Kryptonite et un cœur fleuri puis réunis en bouquet`}
         >
           <defs>
             <linearGradient id="bouquet-paper-front" x1="20%" y1="0%" x2="80%" y2="100%">
@@ -235,9 +238,9 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
               scale: isBouquet ? 1 : 0.72,
             }}
             transition={{ duration: 0.9, delay: isBouquet ? 0.25 : 0, ease: [0.22, 1, 0.36, 1] }}
-            style={{ transformOrigin: '450px 248px' }}
+            style={{ transformOrigin: '450px 355px' }}
           >
-            <g transform="translate(450, 248) scale(1.32) translate(-450, -248)">
+            <g transform="translate(450, 355) scale(1.42) translate(-450, -248)">
               {/* Soft GPU-friendly layered desk shadow beneath bouquet */}
               <ellipse cx="452" cy="288" rx="92" ry="102" fill="rgba(57, 48, 46, 0.045)" />
               <ellipse cx="452" cy="288" rx="76" ry="86" fill="rgba(57, 48, 46, 0.065)" />
@@ -312,7 +315,7 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
             ].map((side, idx) => (
               <g key={idx}>
                 <path
-                  d={`M ${side.x0},222 Q ${side.x0 + side.dir * 52},205 ${side.x0 + side.dir * 96},224 T ${side.x1},216`}
+                  d={`M ${side.x0},202 Q ${side.x0 + side.dir * 52},185 ${side.x0 + side.dir * 96},204 T ${side.x1},196`}
                   fill="none"
                   stroke="#769365"
                   strokeWidth="1.5"
@@ -320,34 +323,54 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
                   strokeLinecap="round"
                 />
                 <path
-                  d={`M ${side.x0 + side.dir * 38},215 Q ${side.x0 + side.dir * 48},203 ${side.x0 + side.dir * 58},208 Q ${side.x0 + side.dir * 48},218 ${side.x0 + side.dir * 38},215 Z`}
+                  d={`M ${side.x0 + side.dir * 38},195 Q ${side.x0 + side.dir * 48},183 ${side.x0 + side.dir * 58},188 Q ${side.x0 + side.dir * 48},198 ${side.x0 + side.dir * 38},195 Z`}
                   fill="#7D986B"
                   opacity="0.65"
                 />
                 <path
-                  d={`M ${side.x0 + side.dir * 78},220 Q ${side.x0 + side.dir * 86},232 ${side.x0 + side.dir * 98},228 Q ${side.x0 + side.dir * 90},218 ${side.x0 + side.dir * 78},220 Z`}
+                  d={`M ${side.x0 + side.dir * 78},200 Q ${side.x0 + side.dir * 86},212 ${side.x0 + side.dir * 98},208 Q ${side.x0 + side.dir * 90},198 ${side.x0 + side.dir * 78},200 Z`}
                   fill="#8EA77C"
                   opacity="0.62"
                 />
                 <circle
                   cx={side.x1}
-                  cy={216}
+                  cy={196}
                   r={3.2}
                   fill="#DF7D99"
                   opacity="0.72"
                 />
               </g>
             ))}
+
+            {/* Soft botanical heart outline blooming outward from its center */}
+            <motion.path
+              d={heartOutlinePath}
+              fill="rgba(232, 166, 183, 0.08)"
+              stroke="#C98297"
+              strokeWidth="1.4"
+              strokeOpacity="0.4"
+              style={{ transformOrigin: `${heartCenter.x}px ${heartCenter.y}px` }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{
+                scale: isBouquet ? 0.55 : 1,
+                opacity: isBouquet ? 0 : 1,
+              }}
+              transition={{
+                duration: 1.25,
+                delay: isBouquet ? 0 : Math.max(0, (heartCompleteDelayMs - 1900) / 1000),
+                ease: [0.16, 1, 0.3, 1],
+              }}
+            />
           </motion.g>
 
-          {/* All individual flowers with green stems: bloom 1-by-1 forming MERIEM / MY / KRYPTONITE, then gather smoothly into bouquet */}
+          {/* All individual flowers: letters bloom 1-by-1, heart blossoms expand from center outward, then gather into bouquet */}
           <g>
             {flowers.map((flower, idx) => (
               <motion.g
                 key={flower.id}
                 initial={{
-                  x: flower.nameX,
-                  y: flower.nameY,
+                  x: flower.originX,
+                  y: flower.originY,
                   scale: 0,
                   rotate: flower.nameRot - 14,
                   opacity: 0,
@@ -373,12 +396,12 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
                   isBouquet
                     ? {
                         duration: 1.4,
-                        delay: (flowers.length - idx) * 0.0025,
+                        delay: (flowers.length - idx) * 0.002,
                         ease: [0.19, 1, 0.22, 1],
                       }
                     : {
-                        duration: 0.45,
-                        delay: idx * 0.01,
+                        duration: flower.isHeart ? 0.72 : 0.45,
+                        delay: flower.bloomDelay,
                         ease: [0.16, 1, 0.3, 1],
                       }
                 }
@@ -397,9 +420,9 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
               scale: isBouquet ? 1 : 0.82,
             }}
             transition={{ duration: 0.85, delay: isBouquet ? 0.55 : 0, ease: [0.22, 1, 0.36, 1] }}
-            style={{ transformOrigin: '450px 248px' }}
+            style={{ transformOrigin: '450px 355px' }}
           >
-            <g transform="translate(450, 248) scale(1.32) translate(-450, -248)">
+            <g transform="translate(450, 355) scale(1.42) translate(-450, -248)">
               {/* Left overlapping paper wrap fold */}
               <path
                 d="M 338,214 Q 398,242 454,248 L 478,372 Q 450,386 420,370 Z"

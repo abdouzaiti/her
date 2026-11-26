@@ -2,9 +2,14 @@ export type FlowerVariety = 'peony' | 'rose' | 'ranunculus' | 'blossom';
 
 export interface FlowerNode {
   id: number;
-  lineIndex: 0 | 1 | 2;
+  lineIndex: 0 | 1 | 2 | 3;
+  isHeart: boolean;
   variety: FlowerVariety;
-  /** Position when spelling MERIEM / MY / KRYPTONITE (inside 900x480 viewBox) */
+  /** Initial origin before blooming (letters bloom in place; heart grows from center) */
+  originX: number;
+  originY: number;
+  bloomDelay: number;
+  /** Position when spelling MERIEM / MY / KRYPTONITE + Heart (inside 900x650 viewBox) */
   nameX: number;
   nameY: number;
   nameScale: number;
@@ -14,7 +19,7 @@ export interface FlowerNode {
   bouquetY: number;
   bouquetScale: number;
   bouquetRot: number;
-  /** Delicate green stem curve & compact length so letters stay crystal clear */
+  /** Delicate green stem curve & compact length */
   stemCurve: number;
   stemLen: number;
   leafSide: -1 | 1;
@@ -24,6 +29,9 @@ export interface FlowerNode {
 export interface MeriemFloralLayout {
   flowers: FlowerNode[];
   vinePaths: string[];
+  heartOutlinePath: string;
+  heartCenter: { x: number; y: number };
+  heartCompleteDelayMs: number;
 }
 
 interface StrokeSample {
@@ -311,32 +319,121 @@ function buildWordLine(
   return { pts: linePts, paths: linePaths };
 }
 
+function heartPoint(t: number, cx: number, cy: number, scaleX: number, scaleY: number) {
+  const sinT = Math.sin(t);
+  const hx = 16 * sinT * sinT * sinT;
+  const hy = -(
+    13 * Math.cos(t) -
+    5 * Math.cos(2 * t) -
+    2 * Math.cos(3 * t) -
+    Math.cos(4 * t)
+  );
+  return {
+    x: cx + hx * scaleX,
+    y: cy + hy * scaleY,
+  };
+}
+
 /**
- * Generate lush artistic floral calligraphy with delicate botanical vines forming:
+ * Generate lush artistic floral calligraphy forming:
  *   MERIEM
  *     MY
  * KRYPTONITE
+ * followed by a large floral heart blooming outward from its center,
  * then smoothly converging into a wrapped flower bouquet.
  */
 export function buildMeriemFlowers(): MeriemFloralLayout {
   const centerX = 450;
 
-  const line1 = buildWordLine('MERIEM', 22, 108, 40, centerX, 15.5);
-  const line2 = buildWordLine('MY', 174, 96, 46, centerX, 15.5);
-  const line3 = buildWordLine('KRYPTONITE', 316, 106, 28, centerX, 15);
+  const line1 = buildWordLine('MERIEM', 18, 102, 40, centerX, 15.5);
+  const line2 = buildWordLine('MY', 156, 92, 46, centerX, 15.5);
+  const line3 = buildWordLine('KRYPTONITE', 286, 100, 28, centerX, 15);
 
-  const allNodes = [
+  const wordSamples = [
     ...line1.pts.map((pt) => ({ ...pt, lineIndex: 0 as const })),
     ...line2.pts.map((pt) => ({ ...pt, lineIndex: 1 as const })),
     ...line3.pts.map((pt) => ({ ...pt, lineIndex: 2 as const })),
   ];
+
+  // Concentric flower heart below KRYPTONITE, building outward from its center
+  const heartCenter = { x: 450, y: 520 };
+  const baseScaleX = 8.4; // ~268px wide
+  const baseScaleY = 7.4; // ~212px tall (spans ~430..640)
+
+  const rings: Array<{ r: number; count: number; scale: number }> = [
+    { r: 0, count: 1, scale: 0.92 },
+    { r: 0.28, count: 8, scale: 0.68 },
+    { r: 0.56, count: 15, scale: 0.72 },
+    { r: 0.80, count: 22, scale: 0.74 },
+    { r: 1.0, count: 30, scale: 0.78 },
+  ];
+
+  interface RawNode {
+    x: number;
+    y: number;
+    lineIndex: 0 | 1 | 2 | 3;
+    isHeart: boolean;
+    scale: number;
+    ringProgress: number;
+  }
+
+  const allNodes: RawNode[] = wordSamples.map((pt) => ({
+    x: pt.x,
+    y: pt.y,
+    lineIndex: pt.lineIndex,
+    isHeart: false,
+    scale: pt.weight === 'stem' ? 0.57 : 0.44,
+    ringProgress: 0,
+  }));
+
+  rings.forEach((ring) => {
+    if (ring.count === 1) {
+      allNodes.push({
+        x: heartCenter.x,
+        y: heartCenter.y + 4,
+        lineIndex: 3,
+        isHeart: true,
+        scale: ring.scale,
+        ringProgress: 0,
+      });
+      return;
+    }
+    for (let k = 0; k < ring.count; k++) {
+      const t = (k / ring.count) * Math.PI * 2;
+      const pt = heartPoint(
+        t,
+        heartCenter.x,
+        heartCenter.y,
+        baseScaleX * ring.r,
+        baseScaleY * ring.r
+      );
+      allNodes.push({
+        x: pt.x,
+        y: pt.y,
+        lineIndex: 3,
+        isHeart: true,
+        scale: ring.scale,
+        ringProgress: ring.r,
+      });
+    }
+  });
+
+  // Smooth SVG outline path for the outer heart vine
+  const outlinePts: string[] = [];
+  const outlineSteps = 56;
+  for (let s = 0; s < outlineSteps; s++) {
+    const t = (s / outlineSteps) * Math.PI * 2;
+    const p = heartPoint(t, heartCenter.x, heartCenter.y, baseScaleX, baseScaleY);
+    outlinePts.push(`${s === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+  }
+  const heartOutlinePath = `${outlinePts.join(' ')} Z`;
 
   const total = allNodes.length;
   const varieties: FlowerVariety[] = ['peony', 'rose', 'ranunculus', 'blossom'];
 
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
   const bouquetCx = 450;
-  const bouquetCy = 152;
+  const bouquetCy = 246;
 
   const slots = allNodes.map((_, idx) => idx);
   for (let i = slots.length - 1; i > 0; i--) {
@@ -344,28 +441,37 @@ export function buildMeriemFlowers(): MeriemFloralLayout {
     [slots[i], slots[j]] = [slots[j], slots[i]];
   }
 
+  const wordEndDelaySec = wordSamples.length * 0.0085 + 0.15;
+  const heartDurationSec = 1.25;
+
   const flowers: FlowerNode[] = allNodes.map((pt, i) => {
     const slot = slots[i];
     const normR = Math.sqrt((slot + 0.5) / total);
     const theta = slot * goldenAngle;
 
-    const bx = bouquetCx + Math.cos(theta) * normR * 165;
-    const by = bouquetCy + Math.sin(theta) * normR * 100 - (1 - normR) * 14;
+    const bx = bouquetCx + Math.cos(theta) * normR * 182;
+    const by = bouquetCy + Math.sin(theta) * normR * 112 - (1 - normR) * 16;
 
-    const radialTilt = ((bx - bouquetCx) / 165) * 28;
-    const baseScale = pt.weight === 'stem' ? 0.57 : 0.44;
+    const radialTilt = ((bx - bouquetCx) / 182) * 28;
+    const bloomDelay = pt.isHeart
+      ? wordEndDelaySec + pt.ringProgress * heartDurationSec
+      : i * 0.0085;
 
     return {
       id: i,
       lineIndex: pt.lineIndex,
+      isHeart: pt.isHeart,
       variety: varieties[i % varieties.length],
+      originX: pt.isHeart ? heartCenter.x : pt.x,
+      originY: pt.isHeart ? heartCenter.y + 4 : pt.y,
+      bloomDelay,
       nameX: pt.x,
       nameY: pt.y,
-      nameScale: baseScale + seeded(i, 3) * 0.09,
+      nameScale: pt.scale + seeded(i, 3) * 0.09,
       nameRot: (seeded(i, 4) - 0.5) * 10,
       bouquetX: bx,
       bouquetY: by,
-      bouquetScale: 1.04 + (1 - normR * 0.5) * 0.52 + seeded(i, 5) * 0.16,
+      bouquetScale: 1.06 + (1 - normR * 0.5) * 0.54 + seeded(i, 5) * 0.16,
       bouquetRot: radialTilt + (seeded(i, 6) - 0.5) * 16,
       stemCurve: (seeded(i, 7) - 0.5) * 5,
       stemLen: 12 + seeded(i, 8) * 5,
@@ -374,8 +480,13 @@ export function buildMeriemFlowers(): MeriemFloralLayout {
     };
   });
 
+  const heartCompleteDelayMs = Math.round((wordEndDelaySec + heartDurationSec + 0.65) * 1000);
+
   return {
     flowers,
     vinePaths: [...line1.paths, ...line2.paths, ...line3.paths],
+    heartOutlinePath,
+    heartCenter,
+    heartCompleteDelayMs,
   };
 }
