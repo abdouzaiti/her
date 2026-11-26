@@ -1,0 +1,6 @@
+{
+  "name": "Télégramme Romantique",
+  "description": "Un télégramme romantique à la française : dénouez le ruban de satin rose, ouvrez l'enveloppe et découvrez votre lettre manuscrite.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

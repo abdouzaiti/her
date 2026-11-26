@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-ivory: #F7F0E6;
+    --color-blush: #E8A6B7;
+    --color-dusty-rose: #C98297;
+    --color-paper-brown: #B9A58F;
+    --color-ink: #39302E;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #EFE6D8;
+    color: #39302E;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+}
+
+.font-editorial {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-handwriting {
+  font-family: 'Caveat', cursive, serif;
+}
+
+.font-arabic {
+  font-family: 'Amiri', 'Cormorant Garamond', serif;
+}
+
+.font-arabic-signature {
+  font-family: 'Aref Ruqaa', 'Amiri', serif;
+}
+
+/* Cotton stationery surface with subtle natural grain and warm directional lighting */
+.paper-surface {
+  background-color: #F7F0E6;
+  background-image:
+    radial-gradient(ellipse at 25% 20%, rgba(255, 253, 249, 0.72) 0%, rgba(247, 240, 230, 0) 65%),
+    radial-gradient(ellipse at 85% 88%, rgba(185, 165, 143, 0.22) 0%, rgba(247, 240, 230, 0) 60%);
+}
+
+.desk-surface {
+  background-color: #EDE3D4;
+  background-image:
+    radial-gradient(circle at 30% 22%, rgba(255, 251, 244, 0.8) 0%, rgba(237, 227, 212, 0.25) 48%, rgba(206, 191, 172, 0.52) 100%);
+}
+
+/* Subtle imperceptible breath animation when resting */
+@keyframes gentle-float {
+  0%, 100% {
+    transform: translate3d(0, 0px, 0);
+  }
+  50% {
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+.animate-gentle-float {
+  animation: gentle-float 6.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-gentle-float {
+    animation: none;
+  }
+}

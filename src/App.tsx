@@ -1,0 +1,225 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { useCallback, useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { RotateCcw } from 'lucide-react';
+import { LETTER_CONFIG } from './config/letterConfig';
+import { FlowerBouquetIntro } from './components/FlowerBouquetIntro';
+import { TelegramEnvelope } from './components/TelegramEnvelope';
+import { LetterSheet } from './components/LetterSheet';
+import type { TelegramPhase } from './types/telegram';
+
+function getInstructionCopy(
+  phase: TelegramPhase,
+  openedSidesCount: number
+): { primary: string; hint?: string } | null {
+  switch (phase) {
+    case 'CLOSED_WITH_RIBBON':
+      return {
+        primary: 'Un petit message vous attend...',
+        hint: 'Tirez doucement sur une extrémité du ruban',
+      };
+    case 'UNTIE_IN_PROGRESS':
+      return {
+        primary: 'Tirez lentement pour dénouer le nœud...',
+      };
+    case 'RIBBON_LOOSE':
+      if (openedSidesCount < 4) {
+        return {
+          primary: 'Ouvrez les quatre côtés du ruban...',
+          hint: `${openedSidesCount} sur 4 côtés ouverts — tirez chaque ruban pour le libérer`,
+        };
+      }
+      return {
+        primary: 'Glissez maintenant le ruban hors du télégramme...',
+      };
+    case 'RIBBON_REMOVED':
+      return {
+        primary: 'Maintenant, ouvrez votre message...',
+        hint: 'Soulevez le rabat vers le haut',
+      };
+    case 'ENVELOPE_OPENING':
+      return {
+        primary: 'Soulevez doucement le rabat...',
+      };
+    case 'ENVELOPE_OPEN':
+    case 'LETTER_EXTRACTION':
+      return {
+        primary: 'Tirez la lettre hors de son enveloppe...',
+      };
+    case 'LETTER_UNFOLDED':
+      return null;
+  }
+}
+
+export default function App() {
+  const [showIntro, setShowIntro] = useState(true);
+  const [phase, setPhase] = useState<TelegramPhase>('CLOSED_WITH_RIBBON');
+  const [openedSidesCount, setOpenedSidesCount] = useState(0);
+  const [resetKey, setResetKey] = useState(0);
+  const [isCompactViewport, setIsCompactViewport] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 640 : false
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const update = () => setIsCompactViewport(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  const handleUntieStart = useCallback(() => {
+    setPhase((prev) => (prev === 'CLOSED_WITH_RIBBON' ? 'UNTIE_IN_PROGRESS' : prev));
+  }, []);
+
+  const handleUntieComplete = useCallback(() => {
+    setPhase((prev) =>
+      prev === 'UNTIE_IN_PROGRESS' || prev === 'CLOSED_WITH_RIBBON' ? 'RIBBON_LOOSE' : prev
+    );
+  }, []);
+
+  const handleRibbonRemoved = useCallback(() => {
+    setPhase((prev) => (prev === 'RIBBON_LOOSE' ? 'RIBBON_REMOVED' : prev));
+  }, []);
+
+  const handleFlapOpenStart = useCallback(() => {
+    setPhase((prev) => (prev === 'RIBBON_REMOVED' ? 'ENVELOPE_OPENING' : prev));
+  }, []);
+
+  const handleFlapOpened = useCallback(() => {
+    setPhase((prev) =>
+      prev === 'ENVELOPE_OPENING' || prev === 'RIBBON_REMOVED' ? 'ENVELOPE_OPEN' : prev
+    );
+  }, []);
+
+  const handleFlapClosed = useCallback(() => {
+    setPhase((prev) => (prev === 'ENVELOPE_OPENING' ? 'RIBBON_REMOVED' : prev));
+  }, []);
+
+  const handleLetterExtractStart = useCallback(() => {
+    setPhase((prev) => (prev === 'ENVELOPE_OPEN' ? 'LETTER_EXTRACTION' : prev));
+  }, []);
+
+  const handleLetterExtracted = useCallback(() => {
+    setPhase((prev) =>
+      prev === 'LETTER_EXTRACTION' || prev === 'ENVELOPE_OPEN' ? 'LETTER_UNFOLDED' : prev
+    );
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setShowIntro(true);
+    setPhase('CLOSED_WITH_RIBBON');
+    setOpenedSidesCount(0);
+    setResetKey((k) => k + 1);
+  }, []);
+
+  const instruction = showIntro ? null : getInstructionCopy(phase, openedSidesCount);
+
+  return (
+    <main className="relative flex h-[100dvh] w-full flex-col items-center justify-center overflow-hidden desk-surface px-4 py-6">
+      {/* Soft cinematic window-light atmosphere */}
+      <div
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 75% 65% at 24% 18%, rgba(255, 252, 246, 0.55) 0%, rgba(255, 252, 246, 0) 70%)',
+        }}
+        aria-hidden="true"
+      />
+
+      {/* Whispered French editorial instruction (telegram phases) */}
+      <div className="pointer-events-none fixed top-7 sm:top-10 inset-x-0 z-50 flex flex-col items-center justify-center px-6 text-center">
+        <AnimatePresence mode="wait">
+          {instruction && (
+            <motion.div
+              key={instruction.primary}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              className="max-w-md"
+            >
+              <p className="font-editorial italic text-xl sm:text-2xl tracking-[0.01em] text-[#39302E]/85">
+                {instruction.primary}
+              </p>
+              {instruction.hint && (
+                <p className="mt-1.5 font-editorial text-xs sm:text-sm tracking-[0.08em] text-[#39302E]/55">
+                  {instruction.hint}
+                </p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Physical Desk Stage */}
+      <AnimatePresence mode="wait">
+        {showIntro ? (
+          <FlowerBouquetIntro
+            key={`intro-${resetKey}`}
+            recipientName={LETTER_CONFIG.recipientName}
+            onContinue={() => setShowIntro(false)}
+          />
+        ) : (
+          <motion.div
+            key={`telegram-${resetKey}`}
+            initial={{ opacity: 0, scale: 0.95, y: 14 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-10 flex items-center justify-center w-full max-w-4xl"
+          >
+            <TelegramEnvelope
+              phase={phase}
+              config={LETTER_CONFIG}
+              isCompactViewport={isCompactViewport}
+              onUntieStart={handleUntieStart}
+              onUntieComplete={handleUntieComplete}
+              onOpenedSidesChange={setOpenedSidesCount}
+              onRibbonRemoved={handleRibbonRemoved}
+              onFlapOpenStart={handleFlapOpenStart}
+              onFlapOpened={handleFlapOpened}
+              onFlapClosed={handleFlapClosed}
+              onLetterExtractStart={handleLetterExtractStart}
+              onLetterExtracted={handleLetterExtracted}
+            />
+
+            {/* Unfolded Handwritten Letter */}
+            {phase === 'LETTER_UNFOLDED' && (
+              <div className="fixed inset-0 z-40 flex items-center justify-center px-4 py-14 sm:py-16 pointer-events-none">
+                <div className="pointer-events-auto">
+                  <LetterSheet config={LETTER_CONFIG} isUnfolded={true} />
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Discreet Reset / Replay button */}
+      <AnimatePresence>
+        {!showIntro && phase !== 'CLOSED_WITH_RIBBON' && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.35 }}
+            className="fixed bottom-5 sm:bottom-7 inset-x-0 z-50 flex justify-center pointer-events-none"
+          >
+            <button
+              type="button"
+              onClick={handleReset}
+              className="pointer-events-auto inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 rounded-sm bg-[#F7F0E6]/90 backdrop-blur-sm border border-[#B9A58F]/45 text-[#39302E]/85 hover:text-[#39302E] hover:bg-[#F7F0E6] hover:border-[#C98297]/65 shadow-[0_4px_14px_rgba(57,48,46,0.08)] transition-colors duration-200 font-editorial text-sm tracking-[0.06em] whitespace-nowrap cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C98297]"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-[#C98297]" aria-hidden="true" />
+              <span>Recommencer</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </main>
+  );
+}
