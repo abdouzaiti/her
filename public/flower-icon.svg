@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="16" fill="#F7F0E6" />
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="#DFD0BC" stroke-width="1.2" />
+  <!-- Delicate sage leaves -->
+  <g fill="#7D986B" opacity="0.88">
+    <path d="M32 38 C22 44 15 44 12 39 C17 35 24 35 32 38 Z" />
+    <path d="M32 38 C42 44 49 44 52 39 C47 35 40 35 32 38 Z" />
+    <path d="M22 25 C16 20 13 15 15 11 C20 14 23 19 22 25 Z" />
+    <path d="M42 25 C48 20 51 15 49 11 C44 14 41 19 42 25 Z" />
+  </g>
+  <!-- Green stem -->
+  <path d="M32 38 Q31 48 32 54" fill="none" stroke="#5E7B4F" stroke-width="2.4" stroke-linecap="round" />
+  <!-- Outer blush peony petals -->
+  <g fill="#F3B8C8" stroke="#C4637F" stroke-width="0.7">
+    <ellipse cx="32" cy="17" rx="8" ry="9" />
+    <ellipse cx="44" cy="24" rx="8" ry="9" transform="rotate(60 44 24)" />
+    <ellipse cx="41" cy="36" rx="8" ry="9" transform="rotate(120 41 36)" />
+    <ellipse cx="23" cy="36" rx="8" ry="9" transform="rotate(240 23 36)" />
+    <ellipse cx="20" cy="24" rx="8" ry="9" transform="rotate(300 20 24)" />
+  </g>
+  <!-- Mid dusty-rose peony petals -->
+  <g fill="#E488A2" stroke="#B85472" stroke-width="0.6">
+    <ellipse cx="32" cy="22" rx="6" ry="7" />
+    <ellipse cx="38" cy="28" rx="6" ry="7" transform="rotate(72 38 28)" />
+    <ellipse cx="35" cy="34" rx="6" ry="7" transform="rotate(144 35 34)" />
+    <ellipse cx="29" cy="34" rx="6" ry="7" transform="rotate(216 29 34)" />
+    <ellipse cx="26" cy="28" rx="6" ry="7" transform="rotate(288 26 28)" />
+  </g>
+  <!-- Rich floral center & golden stamens -->
+  <circle cx="32" cy="29" r="6" fill="#C4637F" />
+  <circle cx="30.8" cy="28" r="2.2" fill="#E9C27B" />
+  <circle cx="33.5" cy="29.4" r="1.6" fill="#D9A858" />
+  <circle cx="31.5" cy="30.8" r="1.3" fill="#F4D79A" />
+</svg>
