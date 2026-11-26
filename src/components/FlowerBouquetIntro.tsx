@@ -158,7 +158,7 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
   recipientName,
   onContinue,
 }) => {
-  const flowers = useMemo(() => buildMeriemFlowers(), []);
+  const { flowers, vinePaths } = useMemo(() => buildMeriemFlowers(), []);
   const [stage, setStage] = useState<IntroStage>('blooming');
 
   useEffect(() => {
@@ -269,6 +269,75 @@ export const FlowerBouquetIntro: React.FC<FlowerBouquetIntroProps> = ({
                 />
               ))}
             </g>
+          </motion.g>
+
+          {/* Delicate botanical calligraphy vine & French editorial flourishes behind the blooms */}
+          <motion.g
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isBouquet ? 0 : 1 }}
+            transition={{ duration: isBouquet ? 0.55 : 0.9, delay: isBouquet ? 0 : 0.15, ease: [0.22, 1, 0.36, 1] }}
+            className="pointer-events-none"
+          >
+            {/* Flowing sage-green botanical vine tracing each sculpted letter */}
+            <g
+              fill="none"
+              stroke="#6D885B"
+              strokeWidth="2.1"
+              strokeOpacity="0.34"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {vinePaths.map((d, i) => (
+                <path key={i} d={d} />
+              ))}
+            </g>
+            {/* Delicate rose-blush inner calligraphic thread */}
+            <g
+              fill="none"
+              stroke="#C98297"
+              strokeWidth="0.9"
+              strokeOpacity="0.28"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {vinePaths.map((d, i) => (
+                <path key={i} d={d} />
+              ))}
+            </g>
+
+            {/* Symmetric botanical tendril flourishes framing "MY" */}
+            {[
+              { dir: -1, x0: 344, x1: 210 },
+              { dir: 1, x0: 556, x1: 690 },
+            ].map((side, idx) => (
+              <g key={idx}>
+                <path
+                  d={`M ${side.x0},222 Q ${side.x0 + side.dir * 52},205 ${side.x0 + side.dir * 96},224 T ${side.x1},216`}
+                  fill="none"
+                  stroke="#769365"
+                  strokeWidth="1.5"
+                  strokeOpacity="0.58"
+                  strokeLinecap="round"
+                />
+                <path
+                  d={`M ${side.x0 + side.dir * 38},215 Q ${side.x0 + side.dir * 48},203 ${side.x0 + side.dir * 58},208 Q ${side.x0 + side.dir * 48},218 ${side.x0 + side.dir * 38},215 Z`}
+                  fill="#7D986B"
+                  opacity="0.65"
+                />
+                <path
+                  d={`M ${side.x0 + side.dir * 78},220 Q ${side.x0 + side.dir * 86},232 ${side.x0 + side.dir * 98},228 Q ${side.x0 + side.dir * 90},218 ${side.x0 + side.dir * 78},220 Z`}
+                  fill="#8EA77C"
+                  opacity="0.62"
+                />
+                <circle
+                  cx={side.x1}
+                  cy={216}
+                  r={3.2}
+                  fill="#DF7D99"
+                  opacity="0.72"
+                />
+              </g>
+            ))}
           </motion.g>
 
           {/* All individual flowers with green stems: bloom 1-by-1 forming MERIEM / MY / KRYPTONITE, then gather smoothly into bouquet */}
